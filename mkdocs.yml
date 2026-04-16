@@ -1,0 +1,23 @@
+site_name: dltaf
+site_description: Manifest-driven data loading toolkit with Airflow helpers and pluggable source integrations.
+site_url: https://paulkov.github.io/dltaf/
+repo_url: https://github.com/PaulKov/dltaf
+repo_name: PaulKov/dltaf
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Plugins: plugins.md
+  - Airflow: airflow.md
+  - Examples: examples.md
+  - Release Process: release.md
+  - Security: security.md
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true

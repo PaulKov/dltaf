@@ -1,0 +1,28 @@
+version: 1
+
+pipeline:
+  name: dlt__oracle_demo__to__clickhouse__raw
+  dataset: raw
+  destination: clickhouse
+
+run:
+  write_disposition: merge
+
+source:
+  kind: oracle_custom_sql
+  name: oracle_smoke
+  queries:
+    - name: smoke_rows
+      table_name: smoke_rows
+      sql_file: ../sql/oracle_smoke_query.sql
+      write_disposition: merge
+      primary_key:
+        - smoke_col
+
+connections:
+  source:
+    kind: oracle
+    vault: ${ENV:DLTAF_SOURCE_VAULT_REF|secret/data/examples/oracle}
+  destination:
+    kind: clickhouse
+    vault: ${ENV:DLTAF_DESTINATION_VAULT_REF|secret/data/examples/clickhouse}

@@ -1,0 +1,26 @@
+version: 1
+
+pipeline:
+  name: dlt__sql_catalog_demo__to__clickhouse__raw
+  dataset: raw
+  destination: clickhouse
+
+run:
+  write_disposition: append
+
+source:
+  kind: sql_database
+  name: sql_catalog_demo
+  schema: public
+  tables:
+    - example_table
+
+connections:
+  source:
+    kind: sql
+    vault: ${ENV:DLTAF_SOURCE_VAULT_REF|secret/data/examples/postgres}
+    overrides:
+      drivername: postgresql+psycopg2
+  destination:
+    kind: clickhouse
+    vault: ${ENV:DLTAF_DESTINATION_VAULT_REF|secret/data/examples/clickhouse}

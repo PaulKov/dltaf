@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dltaf"
+version = "0.1.0"
+description = "Manifest-driven data loading toolkit with Airflow helpers and pluggable source integrations."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{name = "Pavel Kovalev"}]
+keywords = ["airflow", "clickhouse", "data-engineering", "dlt", "etl", "plugins", "yaml"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+  "dlt[clickhouse,sql_database]>=1.18.2,<2",
+  "PyYAML>=6.0.1",
+  "vault-kv-client>=0.1.0",
+  "oracledb>=2.0.0",
+  "psycopg2-binary>=2.9.9",
+  "pymongo>=4.6.0",
+  "sqlalchemy>=2.0.25",
+]
+
+[project.urls]
+Homepage = "https://github.com/PaulKov/dltaf"
+Documentation = "https://paulkov.github.io/dltaf/"
+Issues = "https://github.com/PaulKov/dltaf/issues"
+Changelog = "https://github.com/PaulKov/dltaf/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2.2",
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
+  "pytest>=8.3.5",
+  "ruff>=0.11.5",
+  "twine>=6.1.0",
+]
+docs = [
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
+]
+
+[project.scripts]
+dltaf = "dltaf.cli:main"
+dltaf-run = "dlt_utils.manifest_runner:main"
+dltaf-generate-dags = "cli.generate_dags:main"
+dltaf-show-lineage = "cli.show_lineage:main"
+dlt-manifest-run = "dlt_utils.manifest_runner:main"
+dlt-generate-dags = "cli.generate_dags:main"
+dlt-show-lineage = "cli.show_lineage:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cli*", "dag_builder*", "dlt_pipelines*", "dlt_utils*", "dltaf*", "lineage*"]
+
+[tool.setuptools.package-data]
+"dltaf.examples.manifests" = ["*.yaml"]
+"dltaf.examples.sql" = ["*.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

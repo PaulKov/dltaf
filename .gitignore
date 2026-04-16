@@ -1,0 +1,13 @@
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+.venv/
+.venv_oss/
+.smoke_install/
+__pycache__/
+*.egg-info/
+*.pyc
+.coverage
+build/
+dist/
+site/

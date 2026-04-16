@@ -1,0 +1,25 @@
+version: 1
+
+pipeline:
+  name: dlt__mongodb_demo__to__clickhouse__raw
+  dataset: raw
+  destination: clickhouse
+
+run:
+  write_disposition: replace
+
+source:
+  kind: mongodb
+  name: mongodb_smoke
+  database: example_db
+  collection_names:
+    - events
+    - users
+
+connections:
+  source:
+    kind: mongodb
+    vault: ${ENV:DLTAF_SOURCE_VAULT_REF|secret/data/examples/mongodb}
+  destination:
+    kind: clickhouse
+    vault: ${ENV:DLTAF_DESTINATION_VAULT_REF|secret/data/examples/clickhouse}
