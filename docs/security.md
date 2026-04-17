@@ -1,19 +1,48 @@
 # Security
 
-## General principles
+## Public repository rules
 
-- never commit secrets, tokens, or production credentials
-- keep all shipped examples sanitized
-- avoid publishing internal hostnames, private package registries, or tenant-specific metadata
+The public `dltaf` repository should never contain:
 
-## Vault usage
+- production credentials
+- real Vault refs for private environments
+- internal hostnames
+- private Kafka topics
+- tenant-specific API defaults
 
-Prefer Vault refs over inline credentials in manifests. `dltaf` resolves Vault refs through `vault-kv-client`.
+All shipped examples and templates must stay sanitized.
+
+## Secret resolution
+
+The recommended approach is:
+
+- keep credentials out of manifests
+- resolve them through Vault
+- let `vault-kv-client` handle authentication and transport details
+
+Supported ref forms:
+
+- `vault://mount/path`
+- `mount:path`
+- mapping form with `mount_point`, `path`, `kv_version`
 
 ## Private integrations
 
-Keep customer-specific connectors in:
-- a local private plugin catalog
-- or a private Python package
+Private business logic should live in private plugin modules. That gives you a clean separation:
 
-The public OSS core should stay generic and reusable.
+- OSS core stays reusable and publishable
+- internal transport logic stays private
+
+This is both an architectural boundary and a security boundary.
+
+## Release hygiene
+
+Before every public release:
+
+- run `ruff check .`
+- run `pytest`
+- run `python -m build`
+- run `mkdocs build --strict`
+- scan docs and examples for internal names, hosts, and secrets
+
+If a secret was ever pasted into a terminal, chat, or issue tracker, rotate it instead of assuming it is still safe.

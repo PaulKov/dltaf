@@ -1,0 +1,46 @@
+version: 1
+
+pipeline:
+  name: dlt__sqldb_catalog__to__clickhouse__raw
+  dataset: raw
+  destination: clickhouse
+  progress: log
+  dev_mode: false
+
+run:
+  write_disposition: append
+
+source:
+  kind: sqldb
+  dialect: generic
+  mode: catalog
+  catalog:
+    schema: public
+    tables:
+      - orders
+      - customers
+
+connections:
+  source:
+    kind: postgres
+    vault: ${ENV:POSTGRES__VAULT_REF|company:postgres/example}
+    overrides:
+      drivername: postgresql+psycopg2
+      database: analytics
+  destination:
+    kind: clickhouse
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+    overrides:
+      database: raw
+      dataset_table_separator: __
+
+airflow:
+  dag_id: dlt__sqldb_catalog__to__clickhouse__raw
+  schedule: "0 3 * * *"
+  start_date: "2025-01-01"
+  catchup: false
+  max_active_runs: 1
+  tags:
+    - dlt
+    - sqldb
+    - catalog

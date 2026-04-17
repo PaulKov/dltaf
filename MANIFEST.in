@@ -1,0 +1,2 @@
+recursive-include dltaf/examples/manifests *.yaml
+recursive-include dltaf/examples/sql *.sql

@@ -2,54 +2,111 @@
 
 ## Install
 
+Runtime install:
+
 ```bash
 pip install dltaf
 ```
 
-For local development:
+Editable local install:
 
 ```bash
 git clone https://github.com/PaulKov/dltaf.git
 cd dltaf
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -U pip
+pip install --upgrade pip
 pip install -e .[dev]
 ```
 
-## Validate a manifest
+## 1. Start from a shipped example
+
+The fastest way to understand the framework is to lint and plan a shipped manifest:
 
 ```bash
-dltaf-run --manifest dltaf/examples/manifests/smoke_sql_database_catalog.yaml --validate-only
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml
+dltaf manifest run --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --plan
 ```
 
-## Inspect plugins
+If you want a query-driven Oracle example:
 
 ```bash
-dltaf plugins list
-dltaf plugins inspect mongodb
-dltaf plugins doctor --manifest dltaf/examples/manifests/smoke_mongodb_catalog.yaml
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_query.yaml
 ```
 
-## Built-in source kinds
+If you want MongoDB:
 
-### `oracle_custom_sql`
+```bash
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_mongodb.yaml
+```
 
-Use when you want explicit SQL files and per-query metadata.
+## 2. Generate a fresh template
 
-### `sql_database`
+Use `manifest doctor` when you want a clean starting point:
 
-Use when you want schema and table driven ingestion through `dlt.sources.sql_database`.
+```bash
+dltaf manifest doctor \
+  --template-kind sqldb_catalog \
+  --pipeline-name dlt__postgres__to__clickhouse__raw
+```
 
-### `mongodb`
+Other public-safe template kinds:
 
-Use when you want one or more MongoDB collections loaded through the bundled runtime.
+- `sqldb_catalog`
+- `sqldb_query`
+- `mongodb`
 
-## Secrets
+Legacy SQL template kinds such as `sql_database` and `oracle_custom_sql` still work, but they intentionally generate canonical `sqldb` output.
 
-The recommended pattern is to resolve credentials from Vault via `vault-kv-client`.
+## 3. Understand the command surface
 
-Supported reference forms:
+The core workflow is:
+
+```bash
+dltaf manifest lint --manifest ./manifests/my_pipeline.yaml
+dltaf manifest run --manifest ./manifests/my_pipeline.yaml --plan
+dltaf manifest run --manifest ./manifests/my_pipeline.yaml --dry-run
+dltaf dags generate --manifests-dir ./manifests --output-dir ./generated_dags
+dltaf lineage show --format mermaid
+```
+
+## 4. Configure secrets
+
+`dltaf` resolves connection secrets through `vault-kv-client`.
+
+Supported Vault refs:
+
 - `vault://mount/path`
 - `mount:path`
 - mapping form with `mount_point`, `path`, and optional `kv_version`
+
+Typical pattern:
+
+```yaml
+connections:
+  source:
+    kind: postgres
+    vault: ${ENV:POSTGRES__VAULT_REF|company:postgres/example}
+  destination:
+    kind: clickhouse
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+```
+
+## 5. Add private integrations when you need them
+
+Private integrations are loaded through extension registries. You can keep them inside your monorepo:
+
+```yaml
+run:
+  runners:
+    plugins:
+      - internal.dltaf_plugins.customer_export.runner_plugin
+```
+
+Or via environment variables:
+
+```bash
+export DLT_RUNNER_PLUGINS="internal.dltaf_plugins.customer_export.runner_plugin"
+```
+
+See the full guide in [Plugins](plugins.md).

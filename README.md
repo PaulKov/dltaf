@@ -1,23 +1,34 @@
 # dltaf
 
-`dltaf` is a manifest-driven toolkit for building repeatable data-loading pipelines with `dlt`, optional Airflow DAG generation, and a plugin-first extension model.
+[![CI](https://github.com/PaulKov/dltaf/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/PaulKov/dltaf/actions/workflows/ci.yml)
+[![Docs](https://github.com/PaulKov/dltaf/actions/workflows/pages.yml/badge.svg?branch=master)](https://github.com/PaulKov/dltaf/actions/workflows/pages.yml)
+[![PyPI](https://img.shields.io/pypi/v/dltaf.svg)](https://pypi.org/project/dltaf/)
+[![License](https://img.shields.io/github/license/PaulKov/dltaf.svg)](LICENSE)
 
-The public package ships a clean OSS core:
-- built-in source kinds for `oracle_custom_sql`, `sql_database`, and `mongodb`
-- a unified source plugin registry
-- Airflow runtime helpers for local, packaged, and virtualenv execution
-- a Vault integration layer powered by [`vault-kv-client`](https://github.com/PaulKov/vault-kv-client)
-- documentation and examples that stay safe to publish
+`dltaf` is a manifest-driven data loading framework built around three ideas:
 
-Private integrations are intentionally not bundled into this repository. They can live in your monorepo, a private package index, or both, while still using the same `source.kind` contract.
+- canonical, reviewable YAML manifests
+- a stable OSS core for generic sources
+- extension registries that let private integrations stay private
+
+The public repository ships a clean stage63-based core with:
+
+- canonical `source.kind: sqldb` for relational ingestion
+- built-in `mongodb` support
+- compatibility aliases for legacy SQL manifests such as `sql_database`, `oracle_custom_sql`, and `oracle`
+- Airflow DAG generation helpers
+- manifest linting, doctoring, scaffolding, and lineage tooling
+- Vault-backed secrets resolution through [`vault-kv-client`](https://github.com/PaulKov/vault-kv-client)
+
+Private connectors such as internal APIs, Kafka-backed flows, or company-specific uploaders are intentionally not bundled into the OSS package. They should live in your monorepo or private package index and plug into the same runner, hook, and infra-check registries.
 
 ## Why dltaf
 
-- `YAML-first`: manifests stay readable and reviewable
-- `plugin-first`: internal connectors plug in without forking the OSS core
-- `Airflow-friendly`: isolated virtualenv tasks can resolve both the core package and private plugin requirements
-- `Vault-ready`: one consistent secrets contract for source and destination credentials
-- `self-service`: examples, docs, CLI inspection tools, and smoke-friendly workflows are included
+- `Manifest-first`: pipeline behavior stays diffable and reviewable
+- `Canonical SQL model`: one public SQL contract, with legacy aliases supported as migration shims
+- `Plugin-first`: private integrations extend the framework without forking it
+- `Airflow-friendly`: the same manifest can be linted locally, planned in CI, and executed in DAG wrappers
+- `Self-service`: example manifests, template generation, and migration guidance ship with the package
 
 ## Installation
 
@@ -34,153 +45,154 @@ git clone https://github.com/PaulKov/dltaf.git
 cd dltaf
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -U pip
+pip install --upgrade pip
 pip install -e .[dev]
 ```
 
 ## Quick start
 
-Validate an example manifest:
+Validate the canonical SQL example:
 
 ```bash
-dltaf-run --manifest dltaf/examples/manifests/smoke_sql_database_catalog.yaml --validate-only
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml
 ```
 
-Inspect available plugins:
+Render a safe execution plan without side effects:
 
 ```bash
-dltaf plugins list
-dltaf plugins inspect sql_database
-dltaf plugins doctor --manifest dltaf/examples/manifests/smoke_mongodb_catalog.yaml
+dltaf manifest run \
+  --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml \
+  --plan
 ```
 
-Generate Airflow DAG files from a manifests directory:
+Generate a new public-safe template:
 
 ```bash
-dltaf-generate-dags --manifests-dir ./manifests --output-dir ./generated_dags
+dltaf manifest doctor \
+  --template-kind sqldb_query \
+  --pipeline-name dlt__oracle__to__clickhouse__raw
 ```
 
-Render lineage for a manifests directory:
+Generate Airflow DAG wrappers:
 
 ```bash
-dltaf-show-lineage --manifests-dir ./manifests --format mermaid
+dltaf dags generate --manifests-dir ./manifests --output-dir ./generated_dags
 ```
 
-## Built-in source kinds
+Show lineage:
 
-### `oracle_custom_sql`
+```bash
+dltaf lineage show --format mermaid
+```
 
-Use explicit SQL files and per-query metadata:
-- one manifest can drive multiple queries
-- merge mode can enforce `primary_key`
-- SQL files stay separate from YAML
+## Canonical built-ins
 
-### `sql_database`
+### `sqldb`
 
-Use `dlt.sources.sql_database` in either:
-- single-schema mode with `schema` + `tables`
-- multi-schema mode with `schemas: {schema_name: {tables: [...]}}`
+`sqldb` is the canonical relational source kind.
+
+Use `mode: catalog` when you want schema-and-table driven extraction:
+
+- PostgreSQL, MySQL, MSSQL, or other generic SQL databases
+- catalog-level table selection
+- canonical shape under `source.catalog`
+
+Use `mode: query` when you want explicit Oracle SQL queries:
+
+- one or more named queries
+- query files under `dltaf/examples/sql/` or your own repo
+- Oracle-specific options under `source.dialect_options`
 
 ### `mongodb`
 
-Use the bundled MongoDB runtime for:
-- one or many collections
-- optional collection filters and nesting control
-- replace/append behavior through the manifest `run` section
+Use `mongodb` when you want one or more collections loaded through the bundled generic runtime:
 
-## Private plugin UX
+- explicit collection selection
+- optional table nesting control
+- manifest-level replace/append behavior through `run.write_disposition`
 
-The public core is designed so private connectors can stay private without degrading developer experience.
+## Compatibility aliases
 
-### Option 1: local monorepo catalog
+`dltaf` still accepts older SQL source kinds as compatibility shims:
 
-Point `dltaf` to a local plugin catalog:
+- `sql_database` -> canonicalized to `sqldb + dialect=generic + mode=catalog`
+- `oracle_custom_sql` -> canonicalized to `sqldb + dialect=oracle + mode=query`
+- `oracle` -> canonical alias for Oracle query mode
+
+The public recommendation is still to write new manifests directly in canonical `sqldb` form.
+
+## Private integrations
+
+The OSS core uses three extension registries:
+
+- runner plugins
+- hook plugins
+- infra-check plugins
+
+You can load private modules either from the environment or directly from a manifest:
+
+```yaml
+run:
+  runners:
+    plugins:
+      - internal.dltaf_plugins.customer_export.runner_plugin
+  hooks:
+    plugins:
+      - internal.dltaf_plugins.shared.hooks
+  online_checks:
+    plugins:
+      - internal.dltaf_plugins.customer_export.infra_checks
+```
+
+Or through environment variables:
 
 ```bash
-export DLTAF_PLUGIN_PATHS="/path/to/monorepo/internal/dltaf_plugins"
-dltaf plugins list
+export DLT_RUNNER_PLUGINS="internal.dltaf_plugins.customer_export.runner_plugin"
+export DLT_HOOK_PLUGINS="internal.dltaf_plugins.shared.hooks"
+export DLT_INFRA_CHECK_PLUGINS="internal.dltaf_plugins.customer_export.infra_checks"
 ```
 
-This is the softest rollout path when your private catalog still lives inside an existing monorepo.
+This keeps the manifest contract stable even if the private catalog later moves from a monorepo to a private wheel.
 
-### Option 2: importable plugin modules
-
-Point `dltaf` to importable module names:
-
-```bash
-export DLTAF_PLUGIN_MODULES="company_private_plugins,team_connectors"
-dltaf plugins list
-```
-
-### Option 3: installed private packages
-
-Install a private package that exposes entry points in the `dltaf.plugins` group. `dltaf` will discover them automatically.
-
-### Plugin contract
-
-Every plugin registers one or more `SourcePlugin` objects with:
-- `kind`
-- `validate(manifest)`
-- `build_runtime_env(manifest)` if needed
-- `run(manifest)`
-
-Canonical recommendation for private kinds:
-
-```text
-internal.customer_export
-internal.partner_events
-company.some_connector
-```
-
-### Scaffold a new plugin
-
-```bash
-dltaf scaffold plugin --kind internal.customer_export --output-dir ./internal/dltaf_plugins
-```
-
-## Airflow
-
-`dltaf` ships Airflow helpers for:
-- generating DAGs from manifests
-- loading `run_manifest()` inside standard or virtualenv tasks
-- propagating plugin paths, plugin modules, and plugin-specific requirements to isolated runtimes
-
-Useful runtime environment variables:
-- `DLTAF_PACKAGE_ROOT`
-- `DLTAF_PLUGIN_PATHS`
-- `DLTAF_PLUGIN_MODULES`
-- `DLTAF_PLUGIN_REQUIREMENTS`
-
-See the full guide in [GitHub Pages](https://paulkov.github.io/dltaf/airflow/).
+The roadmap for evolving this split between OSS core and private integrations lives in [ROADMAP.md](ROADMAP.md).
 
 ## Vault integration
 
 `dltaf` resolves manifest Vault references through `vault-kv-client`.
 
 Supported reference forms:
+
 - `vault://mount/path`
 - `mount:path`
 - mapping form with `mount_point`, `path`, and optional `kv_version`
 
-This keeps the secrets contract stable across local runs, CI, and Airflow.
+That contract is intentionally simple and portable across local runs, CI, and Airflow.
 
-## Examples
+## Shipped examples
 
-The repository ships sanitized examples under `dltaf/examples/`:
-- `smoke_oracle_custom_sql.yaml`
+Canonical examples live under `dltaf/examples/manifests/`:
+
+- `smoke_sqldb_catalog.yaml`
+- `smoke_sqldb_query.yaml`
+- `smoke_mongodb.yaml`
+
+Compatibility examples are also shipped for migration and search continuity:
+
 - `smoke_sql_database_catalog.yaml`
+- `smoke_oracle_custom_sql.yaml`
 - `smoke_mongodb_catalog.yaml`
 
-They are intentionally generic. Replace the sample Vault refs and connection settings with your own environment before running them against a live system.
+All examples are sanitized. Replace the sample Vault refs and connection overrides with values from your own environment.
 
 ## Documentation
 
 Full docs live on GitHub Pages:
 
 - Docs: https://paulkov.github.io/dltaf/
-- Plugin guide: https://paulkov.github.io/dltaf/plugins/
-- Airflow guide: https://paulkov.github.io/dltaf/airflow/
+- Getting started: https://paulkov.github.io/dltaf/getting-started/
 - Examples: https://paulkov.github.io/dltaf/examples/
+- Plugins: https://paulkov.github.io/dltaf/plugins/
+- Airflow: https://paulkov.github.io/dltaf/airflow/
 
 ## Development
 
@@ -190,8 +202,17 @@ Run the standard checks locally:
 ruff check .
 pytest
 python -m build
-mkdocs build
+mkdocs build --strict
 ```
+
+## Roadmap
+
+The near-term focus is:
+
+- keep `sqldb` and `mongodb` boring, explicit, and stable
+- improve self-service docs, templates, and examples
+- make private registries easy to adopt from a monorepo or a private package index
+- preserve compatibility aliases long enough for staged migrations without surprise breakage
 
 ## License
 

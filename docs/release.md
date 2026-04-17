@@ -6,23 +6,43 @@
 ruff check .
 pytest
 python -m build
-mkdocs build
+mkdocs build --strict
 ```
+
+## Packaging expectations
+
+Every public release should ship:
+
+- clean wheel and sdist
+- working `dltaf` CLI
+- canonical examples under `dltaf/examples/`
+- documentation that matches the actual runtime contract
+
+## Branching
+
+The public repository is intended to use `master` as the default branch.
+
+Recommended flow:
+
+1. prepare and validate changes in a feature branch
+2. merge into `master`
+3. let CI, docs, and publish workflows run from `master`
+4. cut a tagged release from the validated commit
 
 ## GitHub Actions
 
-The repository ships three main workflows:
-- `ci.yml` for lint, tests, and wheel smoke-install
-- `pages.yml` for GitHub Pages deployment
-- `publish.yml` for PyPI release publishing
+The repository should keep three main workflows healthy:
+
+- `ci.yml`
+- `pages.yml`
+- `publish.yml`
 
 ## PyPI strategy
 
-The repository is ready for PyPI publication. A trusted publishing workflow is the preferred long-term setup. A token-based manual bootstrap is acceptable for the first release.
+Prefer explicit version bumps and immutable releases:
 
-## Versioning
-
-Start with small, explicit semantic version bumps:
 - patch for fixes
-- minor for new built-ins, CLI features, or extension APIs
-- major for manifest-breaking changes
+- minor for new public capabilities or better UX
+- major only for real manifest-breaking changes
+
+If a token was used for bootstrap, rotate it after the public release flow is fully configured.

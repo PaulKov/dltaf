@@ -11,25 +11,11 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Dict, Iterable, List
+from typing import Dict, List
+
+from dltaf.services.execution.redaction import safe_exception_message
 
 logger = logging.getLogger(__name__)
-
-
-def _quote_string_literal(value: str) -> str:
-    escaped = str(value).replace("\\", "\\\\").replace("'", "\\'")
-    return f"'{escaped}'"
-
-
-def _chunked(items: Iterable[str], size: int = 500) -> Iterable[List[str]]:
-    chunk: List[str] = []
-    for item in items:
-        chunk.append(str(item))
-        if len(chunk) >= size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
 
 
 def get_clickhouse_client():
@@ -68,7 +54,7 @@ def get_clickhouse_client():
         )
         return client
     except Exception as e:
-        logger.warning("Could not create ClickHouse client: %s", e)
+        logger.warning("Could not create ClickHouse client: %s", safe_exception_message(e))
         return None
 
 
@@ -102,7 +88,7 @@ def check_tables_exist(
         return table_status
     
     except Exception as e:
-        logger.warning("Could not check table existence: %s", e)
+        logger.warning("Could not check table existence: %s", safe_exception_message(e))
         # Assume tables exist on error (safer for replace)
         return {table: True for table in table_names}
 
@@ -165,7 +151,11 @@ def cleanup_staging_tables(dataset_name: str) -> int:
                     logger.info("Dropped orphaned staging table: %s", staging_table)
                     dropped_count += 1
                 except Exception as e:
-                    logger.warning("Could not drop staging table %s: %s", staging_table, e)
+                    logger.warning(
+                        "Could not drop staging table %s: %s",
+                        staging_table,
+                        safe_exception_message(e),
+                    )
         
         if dropped_count > 0:
             logger.info("Cleaned up %d orphaned staging table(s)", dropped_count)
@@ -173,7 +163,7 @@ def cleanup_staging_tables(dataset_name: str) -> int:
         return dropped_count
     
     except Exception as e:
-        logger.warning("Could not cleanup staging tables: %s", e)
+        logger.warning("Could not cleanup staging tables: %s", safe_exception_message(e))
         return 0
 
 
@@ -205,7 +195,7 @@ def drop_pending_packages(pipeline) -> bool:
         return False
     
     except Exception as e:
-        logger.warning("Could not drop pending packages: %s", e)
+        logger.warning("Could not drop pending packages: %s", safe_exception_message(e))
         return False
 
 
@@ -223,14 +213,48 @@ def get_expected_table_names(manifest: Dict) -> List[str]:
     
     tables = []
     
-    if kind == "oracle_custom_sql":
+    if kind == "sqldb":
+        mode = str(source_cfg.get("mode") or "").strip().lower()
+        if mode == "catalog":
+            catalog = source_cfg.get("catalog") or {}
+            schemas = catalog.get("schemas")
+            if schemas:
+                for schema_name, scfg in schemas.items():
+                    schema_tables = (scfg or {}).get("tables") or []
+                    for table in schema_tables:
+                        tables.append(f"{schema_name}__{table}")
+            else:
+                schema_tables = catalog.get("tables") or []
+                table_name_transform = catalog.get("table_name_transform") or {}
+                drop_prefix = table_name_transform.get("drop_prefix")
+                for table in schema_tables:
+                    table_name = table
+                    if drop_prefix and str(table_name).startswith(str(drop_prefix)):
+                        table_name = str(table_name)[len(str(drop_prefix)) :]
+                    tables.append(str(table_name))
+        elif mode == "query":
+            queries = ((source_cfg.get("query") or {}).get("queries") or [])
+            for q in queries:
+                table_name = q.get("table_name") or q.get("name")
+                if table_name:
+                    tables.append(str(table_name))
+
+    elif kind == "oracle_custom_sql":
         queries = source_cfg.get("queries") or []
         for q in queries:
             table_name = q.get("table_name") or q.get("name")
             if table_name:
                 tables.append(str(table_name))
-    
-    elif kind == "sql_database":
+
+    elif kind in {"sql_database", "oracle"}:
+        if kind == "oracle":
+            queries = source_cfg.get("queries") or []
+            for q in queries:
+                table_name = q.get("table_name") or q.get("name")
+                if table_name:
+                    tables.append(str(table_name))
+            return tables
+
         # Multi-schema mode
         schemas = source_cfg.get("schemas")
         if schemas:
@@ -256,7 +280,7 @@ def get_expected_table_names(manifest: Dict) -> List[str]:
     elif kind == "mongodb":
         collections = source_cfg.get("collection_names") or []
         tables.extend([str(c) for c in collections])
-    
+
     return tables
 
 

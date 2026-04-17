@@ -13,23 +13,17 @@ Architecture:
 """
 
 import logging
-import os
-import re
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import yaml
 from airflow.operators.python import PythonOperator, PythonVirtualenvOperator
 from airflow.utils.task_group import TaskGroup
 
 from dlt_utils.naming import normalize_token, validate_pipeline_name
 
 logger = logging.getLogger(__name__)
-
-
-_ENV_REF_PATTERN = re.compile(r"\$\{ENV:([A-Z0-9_]+)(?:\|[^}]*)?\}")
 
 
 # ============================================================================
@@ -46,121 +40,7 @@ def _python_callable_wrapper(manifest_path, configure_logging=False, **context):
     return None
 
 
-def _collect_manifest_env_refs(obj: Any) -> set[str]:
-    if isinstance(obj, dict):
-        refs: set[str] = set()
-        for value in obj.values():
-            refs.update(_collect_manifest_env_refs(value))
-        return refs
-    if isinstance(obj, list):
-        refs: set[str] = set()
-        for value in obj:
-            refs.update(_collect_manifest_env_refs(value))
-        return refs
-    if isinstance(obj, str):
-        return set(_ENV_REF_PATTERN.findall(obj))
-    return set()
-
-
-def _build_airflow_var_bridge_env(manifest_path: Path) -> Dict[str, str]:
-    """Build AIRFLOW_VAR_* env bridge for virtualenv tasks from active manifest refs."""
-
-    raw_manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
-    if not isinstance(raw_manifest, dict):
-        return {}
-
-    env_names = sorted(_collect_manifest_env_refs(raw_manifest))
-    return {
-        f"AIRFLOW_VAR_{name}": "{{ var.value.get('" + name + "', '') }}"
-        for name in env_names
-    }
-
-
-def _is_framework_root(path: Path) -> bool:
-    """Return True when the path looks like an embedded dltaf framework root."""
-
-    return (path / "dlt_utils").is_dir() and (path / "dag_builder").is_dir()
-
-
-def _candidate_framework_roots(manifest_path: Path) -> List[Path]:
-    """Resolve framework roots for virtualenv fallback imports.
-
-    Resolution order is intentionally package-first:
-    1. installed package import is attempted before this helper is used
-    2. `DLTAF_PACKAGE_ROOT`, if explicitly configured
-    3. repo-local embedded `dags/dp-dlt-af` discovered from the manifest path
-    """
-
-    import os
-
-    candidates: List[Path] = []
-    seen: set[Path] = set()
-
-    def _append(path: Path) -> None:
-        resolved = path.expanduser().resolve()
-        if resolved in seen:
-            return
-        seen.add(resolved)
-        candidates.append(resolved)
-
-    package_root = os.getenv("DLTAF_PACKAGE_ROOT", "").strip()
-    if package_root:
-        _append(Path(package_root))
-
-    manifest_abs = manifest_path.expanduser().resolve()
-    for parent in [manifest_abs.parent] + list(manifest_abs.parents):
-        direct_candidate = parent / "dp-dlt-af"
-        if _is_framework_root(direct_candidate):
-            _append(direct_candidate)
-        if _is_framework_root(parent):
-            _append(parent)
-
-    return candidates
-
-
-def _import_run_manifest(manifest_path_arg: str, logger: logging.Logger):
-    """Import `run_manifest` with package-first and embedded fallback semantics."""
-
-    try:
-        from dlt_utils.manifest_runner import run_manifest
-
-        logger.info("Loaded dlt_utils.manifest_runner from installed/importable package")
-        return run_manifest
-    except ImportError as import_error:
-        import sys
-
-        manifest_path = Path(manifest_path_arg).resolve()
-        last_error: ImportError = import_error
-
-        for framework_root in _candidate_framework_roots(manifest_path):
-            root_str = str(framework_root)
-            if root_str not in sys.path:
-                sys.path.insert(0, root_str)
-                logger.info(f"Added framework root to sys.path: {framework_root}")
-
-            try:
-                from dlt_utils.manifest_runner import run_manifest
-
-                logger.info(
-                    "Loaded dlt_utils.manifest_runner via fallback framework root: %s",
-                    framework_root,
-                )
-                return run_manifest
-            except ImportError as retry_error:
-                last_error = retry_error
-                logger.warning(
-                    "Failed to import dlt_utils from fallback root %s: %s",
-                    framework_root,
-                    retry_error,
-                )
-
-        logger.error(f"Failed to import dlt_utils.manifest_runner: {last_error}")
-        logger.error(f"Candidate framework roots: {_candidate_framework_roots(manifest_path)}")
-        logger.error(f"Manifest path: {manifest_path}")
-        raise last_error
-
-
-def _virtualenv_callable(manifest_path_arg, configure_logging_arg, runtime_env_dict):
+def _virtualenv_callable(manifest_path_arg, configure_logging_arg, vault_env_dict):
     """Wrapper для PythonVirtualenvOperator.
     
     КРИТИЧНО: Эта функция ДОЛЖНА быть top-level (module-level),
@@ -172,21 +52,40 @@ def _virtualenv_callable(manifest_path_arg, configure_logging_arg, runtime_env_d
     Args:
         manifest_path_arg: Путь к манифесту
         configure_logging_arg: Настраивать ли логирование
-        runtime_env_dict: Словарь ENV для runtime (Vault + AIRFLOW_VAR bridge)
+        vault_env_dict: Словарь с Vault credentials для установки в ENV
     """
     import logging
     import os
+    import sys
+    from pathlib import Path
     
     logger = logging.getLogger(__name__)
     
-    if runtime_env_dict:
-        for key, value in runtime_env_dict.items():
+    if vault_env_dict:
+        for key, value in vault_env_dict.items():
             if value:  # Устанавливаем только непустые значения
                 os.environ[key] = str(value)
                 logger.info(f"Set ENV variable: {key}")
-
-    run_manifest = _import_run_manifest(manifest_path_arg, logger)
-
+    
+    # Определяем путь к корню проекта через манифест
+    manifest_abs = Path(manifest_path_arg).resolve()
+    
+    # Манифесты обычно в dags/manifests, проект на 2 уровня выше
+    project_root = manifest_abs.parent.parent.parent
+    
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+        logger.info(f"Added project root to sys.path: {project_root}")
+    
+    # Динамический импорт внутри функции - критично для virtualenv!
+    try:
+        from dlt_utils.manifest_runner import run_manifest
+    except ImportError as e:
+        logger.error(f"Failed to import dlt_utils: {e}")
+        logger.error(f"sys.path: {sys.path}")
+        logger.error(f"project_root: {project_root}")
+        raise
+    
     logger.info(f"Starting pipeline from manifest: {manifest_path_arg}")
     
     try:
@@ -340,64 +239,14 @@ class DependencyResolver:
         return {
             "dlt": "dlt[clickhouse,sql_database]>=1.18.2,<2",
             "pyyaml": "PyYAML>=6.0.1",
-            "vault-kv-client": "vault-kv-client>=0.1.0",
+            "hvac": "hvac>=2.1.0",
             "oracledb": "oracledb>=2.0.0",
             "sqlalchemy": "sqlalchemy>=2.0.25",
             "psycopg2-binary": "psycopg2-binary>=2.9.9",
             "pymongo": "pymongo>=4.6.0",
+            "requests": "requests>=2.31.0",
+            "kafka-python": "kafka-python>=2.0.2",
         }
-
-    @staticmethod
-    def _airflow_variable_lookup_enabled() -> bool:
-        return any(
-            key == "AIRFLOW_HOME" or key.startswith(("AIRFLOW__", "AIRFLOW_CTX_"))
-            for key in os.environ
-        )
-
-    @staticmethod
-    def _get_env_or_airflow_value(name: str) -> str:
-        value = os.getenv(name, "").strip()
-        if value:
-            return value
-
-        value = os.getenv(f"AIRFLOW_VAR_{name}", "").strip()
-        if value:
-            return value
-
-        if DependencyResolver._airflow_variable_lookup_enabled():
-            try:
-                from airflow.models import Variable
-
-                value = str(Variable.get(name, default_var="")).strip()
-                if value:
-                    return value
-            except Exception:
-                pass
-
-        return ""
-
-    @staticmethod
-    def _parse_requirement_list(raw: str) -> List[str]:
-        value = (raw or "").strip()
-        if not value:
-            return []
-
-        if value.startswith("["):
-            try:
-                import json
-
-                payload = json.loads(value)
-                if isinstance(payload, list):
-                    return [str(item).strip() for item in payload if str(item).strip()]
-            except Exception:
-                logger.warning("Failed to parse DLTAF_PLUGIN_REQUIREMENTS as JSON list")
-
-        return [part.strip() for part in value.split(",") if part.strip()]
-
-    @classmethod
-    def get_plugin_requirements(cls) -> List[str]:
-        raw = cls._get_env_or_airflow_value("DLTAF_PLUGIN_REQUIREMENTS")
-        return cls._parse_requirement_list(raw)
     
     @classmethod
     def get_all_requirements(cls) -> List[str]:
@@ -409,11 +258,8 @@ class DependencyResolver:
         Returns:
             Список всех requirements из pyproject.toml
         """
-        deps = list(cls.load_dependencies().values())
-        for requirement in cls.get_plugin_requirements():
-            if requirement not in deps:
-                deps.append(requirement)
-        return deps
+        deps = cls.load_dependencies()
+        return list(deps.values())
 
 
 
@@ -514,13 +360,10 @@ class VirtualenvOperatorStrategy(BaseOperatorStrategy):
             "VAULT_TOKEN": "{{ var.value.get('VAULT_TOKEN', '') }}",
             "VAULT_ROLE_ID": "{{ var.value.get('VAULT_ROLE_ID', '') }}",
             "VAULT_SECRET_ID": "{{ var.value.get('VAULT_SECRET_ID', '') }}",
-            "DLTAF_PLUGIN_PATHS": "{{ var.value.get('DLTAF_PLUGIN_PATHS', '') }}",
-            "DLTAF_PLUGIN_MODULES": "{{ var.value.get('DLTAF_PLUGIN_MODULES', '') }}",
         }
-        airflow_var_bridge_env = _build_airflow_var_bridge_env(manifest_path)
         
         custom_env = task_config.pop("env", None) or {}
-        final_runtime_env = {**vault_env_vars, **airflow_var_bridge_env, **custom_env}
+        final_vault_env = {**vault_env_vars, **custom_env}
         
         logger.info(
             f"Creating isolated virtualenv with SQLAlchemy 2.0 "
@@ -535,7 +378,7 @@ class VirtualenvOperatorStrategy(BaseOperatorStrategy):
             op_args=[
                 str(manifest_path),  # manifest_path_arg
                 task_config.pop("configure_logging", False),
-                final_runtime_env,
+                final_vault_env,
             ],
             task_group=task_group,
             **task_config,

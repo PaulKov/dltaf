@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dltaf"
-version = "0.1.0"
-description = "Manifest-driven data loading toolkit with Airflow helpers and pluggable source integrations."
+version = "0.2.0"
+description = "Manifest-driven data loading framework with canonical SQLDB manifests, Airflow helpers, and pluggable private integrations."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -27,6 +27,7 @@ classifiers = [
 dependencies = [
   "dlt[clickhouse,sql_database]>=1.18.2,<2",
   "PyYAML>=6.0.1",
+  "pydantic>=2.8,<3",
   "vault-kv-client>=0.1.0",
   "oracledb>=2.0.0",
   "psycopg2-binary>=2.9.9",
@@ -38,7 +39,7 @@ dependencies = [
 Homepage = "https://github.com/PaulKov/dltaf"
 Documentation = "https://paulkov.github.io/dltaf/"
 Issues = "https://github.com/PaulKov/dltaf/issues"
-Changelog = "https://github.com/PaulKov/dltaf/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/PaulKov/dltaf/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -55,7 +56,7 @@ docs = [
 ]
 
 [project.scripts]
-dltaf = "dltaf.cli:main"
+dltaf = "dltaf.cli.main:main"
 dltaf-run = "dlt_utils.manifest_runner:main"
 dltaf-generate-dags = "cli.generate_dags:main"
 dltaf-show-lineage = "cli.show_lineage:main"
@@ -77,3 +78,11 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+
+[tool.ruff.lint.per-file-ignores]
+"dlt_utils/core/*.py" = ["E402"]
+"dlt_utils/runners/*.py" = ["E402"]
+"dltaf/app/deprecation.py" = ["E402"]
+"dltaf/services/manifests/schema/__init__.py" = ["F401"]

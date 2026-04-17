@@ -12,9 +12,11 @@ theme:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Manifest Model: manifests.md
+  - Examples: examples.md
   - Plugins: plugins.md
   - Airflow: airflow.md
-  - Examples: examples.md
+  - Compatibility: compatibility.md
   - Release Process: release.md
   - Security: security.md
 markdown_extensions:

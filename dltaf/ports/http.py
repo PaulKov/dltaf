@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+
+class HttpClient(Protocol):
+    def get_json(self, url: str, **kwargs: Any) -> Any: ...
+    def post_json(self, url: str, **kwargs: Any) -> Any: ...
+    def close(self) -> None: ...

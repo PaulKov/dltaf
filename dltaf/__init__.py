@@ -1,27 +1,9 @@
-from __future__ import annotations
+"""dp-dlt-af v2 package skeleton.
 
-from dltaf.plugins import (
-    PluginRegistry,
-    RegisteredSourcePlugin,
-    SourcePlugin,
-    SourcePluginError,
-    SourcePluginNotFoundError,
-    SourcePluginValidationError,
-    build_source_registry,
-    env_plugin_modules,
-    env_plugin_paths,
-    scaffold_plugin_source,
-)
+This package is introduced as a clean, future-facing namespace for the large
+OOP refactor. Existing modules (`dlt_utils`, `cli`, `dag_builder`, ...) remain
+supported and act as backward-compatible façades.
+"""
 
-__all__ = [
-    "PluginRegistry",
-    "RegisteredSourcePlugin",
-    "SourcePlugin",
-    "SourcePluginError",
-    "SourcePluginNotFoundError",
-    "SourcePluginValidationError",
-    "build_source_registry",
-    "env_plugin_modules",
-    "env_plugin_paths",
-    "scaffold_plugin_source",
-]
+__all__ = ["__version__"]
+__version__ = "0.2.0"
