@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dltaf"
-version = "0.2.0"
+version = "0.2.1"
 description = "Manifest-driven data loading framework with canonical SQLDB manifests, Airflow helpers, and pluggable private integrations."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,14 +25,9 @@ classifiers = [
   "Topic :: System :: Distributed Computing",
 ]
 dependencies = [
-  "dlt[clickhouse,sql_database]>=1.18.2,<2",
+  "dlt>=1.18.2,<2",
   "PyYAML>=6.0.1",
   "pydantic>=2.8,<3",
-  "vault-kv-client>=0.1.0",
-  "oracledb>=2.0.0",
-  "psycopg2-binary>=2.9.9",
-  "pymongo>=4.6.0",
-  "sqlalchemy>=2.0.25",
 ]
 
 [project.urls]
@@ -42,6 +37,39 @@ Issues = "https://github.com/PaulKov/dltaf/issues"
 Changelog = "https://github.com/PaulKov/dltaf/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
+clickhouse = [
+  "dlt[clickhouse]>=1.18.2,<2",
+]
+sqldb = [
+  "dlt[sql_database]>=1.18.2,<2",
+  "sqlalchemy>=2.0.25",
+]
+postgres = [
+  "psycopg2-binary>=2.9.9",
+]
+oracle = [
+  "oracledb>=2.0.0",
+  "sqlalchemy>=2.0.25",
+]
+mongodb = [
+  "pymongo>=4.6.0",
+]
+vault = [
+  "vault-kv-client>=0.1.0",
+]
+runtime = [
+  "vault-kv-client>=0.1.0",
+  "dlt[clickhouse]>=1.18.2,<2",
+]
+all = [
+  "vault-kv-client>=0.1.0",
+  "dlt[clickhouse]>=1.18.2,<2",
+  "dlt[sql_database]>=1.18.2,<2",
+  "sqlalchemy>=2.0.25",
+  "psycopg2-binary>=2.9.9",
+  "oracledb>=2.0.0",
+  "pymongo>=4.6.0",
+]
 dev = [
   "build>=1.2.2",
   "mkdocs>=1.6.1",

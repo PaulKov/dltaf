@@ -37,8 +37,9 @@ The current public recommendation is:
 ## Suggested reading order
 
 1. [Getting Started](getting-started.md)
-2. [Manifest Model](manifests.md)
-3. [Examples](examples.md)
-4. [Plugins and Private Integrations](plugins.md)
-5. [Airflow](airflow.md)
-6. [Compatibility and Migration](compatibility.md)
+2. [Installation Profiles](installation-profiles.md)
+3. [Manifest Model](manifests.md)
+4. [Examples](examples.md)
+5. [Plugins and Private Integrations](plugins.md)
+6. [Airflow](airflow.md)
+7. [Compatibility and Migration](compatibility.md)

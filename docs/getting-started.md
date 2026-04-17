@@ -2,10 +2,19 @@
 
 ## Install
 
-Runtime install:
+Lean core install:
 
 ```bash
 pip install dltaf
+```
+
+Runtime profile examples:
+
+```bash
+pip install "dltaf[runtime]"
+pip install "dltaf[clickhouse,sqldb,postgres]"
+pip install "dltaf[clickhouse,sqldb,oracle]"
+pip install "dltaf[clickhouse,mongodb]"
 ```
 
 Editable local install:
@@ -18,6 +27,9 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .[dev]
 ```
+
+Use the lean core when you only need linting, planning, template generation, or docs.
+Use a runtime profile when you want to actually execute manifests inside CI or Airflow.
 
 ## 1. Start from a shipped example
 

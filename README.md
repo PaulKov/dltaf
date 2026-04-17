@@ -32,10 +32,26 @@ Private connectors such as internal APIs, Kafka-backed flows, or company-specifi
 
 ## Installation
 
-Runtime install:
+Lean core install for linting, planning, docs, template generation, and non-runtime tooling:
 
 ```bash
 pip install dltaf
+```
+
+Common runtime profiles:
+
+```bash
+# ClickHouse destination + Vault-backed private plugin flows
+pip install "dltaf[runtime]"
+
+# PostgreSQL or other SQLDB catalog ingestion into ClickHouse
+pip install "dltaf[clickhouse,sqldb,postgres]"
+
+# Oracle query-driven ingestion into ClickHouse
+pip install "dltaf[clickhouse,sqldb,oracle]"
+
+# MongoDB ingestion into ClickHouse
+pip install "dltaf[clickhouse,mongodb]"
 ```
 
 Developer install:
@@ -48,6 +64,10 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .[dev]
 ```
+
+The public package is intentionally split into extras so Airflow `PythonVirtualenvOperator`
+tasks and CI smoke jobs do not have to install Oracle, MongoDB, Vault, and every SQL driver
+when they only need one runtime slice.
 
 ## Quick start
 
@@ -190,6 +210,7 @@ Full docs live on GitHub Pages:
 
 - Docs: https://paulkov.github.io/dltaf/
 - Getting started: https://paulkov.github.io/dltaf/getting-started/
+- Installation profiles: https://paulkov.github.io/dltaf/installation-profiles/
 - Examples: https://paulkov.github.io/dltaf/examples/
 - Plugins: https://paulkov.github.io/dltaf/plugins/
 - Airflow: https://paulkov.github.io/dltaf/airflow/

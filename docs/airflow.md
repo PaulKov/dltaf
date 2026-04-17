@@ -28,6 +28,25 @@ The DAG generator reads manifest files and creates lightweight wrappers. Your ac
 
 That keeps the generated DAG layer intentionally thin.
 
+## Package-mode install profiles
+
+For `PythonVirtualenvOperator`, prefer explicit slim profiles instead of a kitchen-sink install:
+
+```yaml
+airflow:
+  task:
+    use_virtualenv: true
+    requirements:
+      - dltaf[clickhouse,sqldb,postgres]==0.2.1
+```
+
+Typical mappings:
+
+- SQL catalog + PostgreSQL source -> `dltaf[clickhouse,sqldb,postgres]`
+- Oracle query mode -> `dltaf[clickhouse,sqldb,oracle]`
+- MongoDB -> `dltaf[clickhouse,mongodb]`
+- private ClickHouse + Vault flows -> `dltaf[runtime]`
+
 ## Secrets in Airflow
 
 The same manifest connection sections work in Airflow because `dltaf` resolves them into environment variables before execution.

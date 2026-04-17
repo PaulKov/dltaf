@@ -13,6 +13,15 @@ The package ships sanitized example manifests under `dltaf/examples/manifests/`.
 | `smoke_oracle_custom_sql.yaml` | Legacy Oracle query manifest | Compatibility |
 | `smoke_mongodb_catalog.yaml` | Compatibility filename kept from earlier docs | Compatibility |
 
+Recommended runtime profiles:
+
+| Example | Install profile |
+| --- | --- |
+| `smoke_sqldb_catalog.yaml` | `dltaf[clickhouse,sqldb,postgres]` |
+| `smoke_sqldb_query.yaml` | `dltaf[clickhouse,sqldb,oracle]` |
+| `smoke_mongodb.yaml` | `dltaf[clickhouse,mongodb]` |
+| compatibility SQL examples | same profile as their canonical target |
+
 ## Canonical SQL catalog example
 
 File: `dltaf/examples/manifests/smoke_sqldb_catalog.yaml`
@@ -60,6 +69,7 @@ source:
 Recommended smoke commands:
 
 ```bash
+pip install "dltaf[clickhouse,sqldb,postgres]"
 dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --allow-filename-mismatch
 dltaf manifest run --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --plan
 ```
@@ -90,6 +100,12 @@ source:
 
 The SQL file lives in `dltaf/examples/sql/oracle_smoke_query.sql`.
 
+Recommended profile:
+
+```bash
+pip install "dltaf[clickhouse,sqldb,oracle]"
+```
+
 ## MongoDB example
 
 File: `dltaf/examples/manifests/smoke_mongodb.yaml`
@@ -104,6 +120,12 @@ source:
     - users
     - events
   max_table_nesting: 2
+```
+
+Recommended profile:
+
+```bash
+pip install "dltaf[clickhouse,mongodb]"
 ```
 
 ## Compatibility examples
