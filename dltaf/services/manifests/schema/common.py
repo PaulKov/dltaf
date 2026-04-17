@@ -151,7 +151,7 @@ class RunConfigStrict(RunConfig, ForbidExtraModel):
 
 class ConnectionSpec(AllowExtraModel):
     kind: str
-    vault: Optional[str] = None
+    vault: Optional[Union[str, "VaultRefConfig"]] = None
     airflow_variable: Optional[str] = None
     airflow_variable_prefix: Optional[str] = None
     airflow_variables: Optional[Dict[str, str]] = None
@@ -168,7 +168,7 @@ class ConnectionSpec(AllowExtraModel):
 
 
 class ConnectionSpecStrict(ConnectionSpec, ForbidExtraModel):
-    pass
+    vault: Optional[Union[str, "VaultRefConfigStrict"]] = None
 
 
 class ConnectionsConfig(AllowExtraModel):
@@ -181,6 +181,53 @@ class ConnectionsConfigStrict(ForbidExtraModel):
     source: Optional[ConnectionSpecStrict] = None
     destination: Optional[ConnectionSpecStrict] = None
     kafka: Optional[ConnectionSpecStrict] = None
+
+
+class VaultRefConfig(AllowExtraModel):
+    ref: Optional[str] = None
+    mount_point: Optional[str] = None
+    path: Optional[str] = None
+    kv_version: Optional[Union[int, str]] = None
+
+    @field_validator("ref", "mount_point", "path")
+    @classmethod
+    def normalize_optional_str(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        s = str(value or "").strip()
+        if not s:
+            raise ValueError("value must be a non-empty string")
+        return s
+
+    @field_validator("kv_version")
+    @classmethod
+    def normalize_kv_version(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        return str(value).strip()
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "VaultRefConfig":
+        has_ref = bool(self.ref)
+        has_mount_parts = bool(self.mount_point) or bool(self.path)
+
+        if has_ref and has_mount_parts:
+            raise ValueError("vault mapping must use either ref or mount_point/path, not both")
+
+        if has_ref:
+            return self
+
+        if bool(self.mount_point) != bool(self.path):
+            raise ValueError("vault mapping requires both mount_point and path")
+
+        if not self.mount_point or not self.path:
+            raise ValueError("vault mapping requires ref or mount_point/path")
+
+        return self
+
+
+class VaultRefConfigStrict(VaultRefConfig, ForbidExtraModel):
+    pass
 
 
 class DependsOnRef(AllowExtraModel):

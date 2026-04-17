@@ -24,6 +24,7 @@ def parse_vault_ref(ref: Any) -> VaultSecretRef:
       - "vault://<mount>/<path>"
       - "<mount>:<path>"  (recommended)
       - {mount_point: ..., path: ..., kv_version: ...}
+      - {ref: "mount:path", kv_version: ...}
     """
     if ref is None:
         raise ValueError("vault ref is required")
@@ -32,12 +33,25 @@ def parse_vault_ref(ref: Any) -> VaultSecretRef:
         return ref
 
     if isinstance(ref, Mapping):
+        if "ref" in ref:
+            nested_ref = parse_vault_ref(ref.get("ref"))
+            kv_version = ref.get("kv_version", nested_ref.kv_version)
+            return VaultSecretRef(
+                mount_point=nested_ref.mount_point,
+                path=nested_ref.path,
+                kv_version=str(kv_version) if kv_version not in (None, "") else None,
+            )
+
         mp = str(ref.get("mount_point") or ref.get("mount") or "").strip()
         path = str(ref.get("path") or "").strip().strip("/")
         kv_version = ref.get("kv_version")
         if not mp or not path:
             raise ValueError(f"invalid vault ref dict: {ref}")
-        return VaultSecretRef(mount_point=mp.rstrip("/"), path=path, kv_version=kv_version)
+        return VaultSecretRef(
+            mount_point=mp.rstrip("/"),
+            path=path,
+            kv_version=str(kv_version) if kv_version not in (None, "") else None,
+        )
 
     if not isinstance(ref, str):
         raise ValueError(f"vault ref must be str or mapping, got: {type(ref)}")
@@ -140,6 +154,7 @@ def get_secret_from_vault(ref: VaultSecretRef) -> Dict[str, Any]:
             "Install dependency 'vault-kv-client>=0.1.0'."
         ) from exc
 
+    _ensure_vault_env_aliases()
     manager = get_default_manager()
     secret = manager.get_secret(
         mount_point=ref.mount_point,
@@ -147,6 +162,24 @@ def get_secret_from_vault(ref: VaultSecretRef) -> Dict[str, Any]:
         kv_version=ref.kv_version,
     )
     return dict(secret)
+
+
+def _ensure_vault_env_aliases() -> None:
+    """Normalize Vault env aliases expected by ``vault-kv-client``.
+
+    Consumer runtimes often expose ``VAULT_ADDRESS``, while the public client
+    contract uses ``VAULT_ADDR``. Keep both names aligned before constructing
+    the default manager so package-mode runtimes stay portable.
+    """
+
+    vault_addr = str(os.getenv("VAULT_ADDR", "") or "").strip()
+    vault_address = str(os.getenv("VAULT_ADDRESS", "") or "").strip()
+
+    if not vault_addr and vault_address:
+        os.environ["VAULT_ADDR"] = vault_address
+
+    if not vault_address and vault_addr:
+        os.environ["VAULT_ADDRESS"] = vault_addr
 
 
 def build_clickhouse_env(

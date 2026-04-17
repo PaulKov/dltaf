@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2
+
+Vault-backed manifest connections now support explicit KV version pinning.
+
+Highlights:
+- `connections.*.vault` accepts both string refs and structured mappings
+- new public mapping form supports `ref + kv_version`
+- `parse_vault_ref` now understands `{ref: "mount:path", kv_version: "..."}`
+- Vault env bootstrap now keeps `VAULT_ADDR` and `VAULT_ADDRESS` aligned
+- docs and Airflow guidance now show deterministic KV v2 patterns for low-privilege roles
+
 ## 0.2.1
 
 Runtime packaging has been split into explicit install profiles.

@@ -185,6 +185,18 @@ Supported reference forms:
 - `vault://mount/path`
 - `mount:path`
 - mapping form with `mount_point`, `path`, and optional `kv_version`
+- mapping form with `ref` plus explicit `kv_version`
+
+Recommended explicit KV v2 pattern:
+
+```yaml
+connections:
+  source:
+    kind: postgres
+    vault:
+      ref: ${ENV:POSTGRES__VAULT_REF|company:postgres/example}
+      kv_version: "2"
+```
 
 That contract is intentionally simple and portable across local runs, CI, and Airflow.
 

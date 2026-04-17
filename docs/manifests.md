@@ -24,6 +24,22 @@ connections:
     vault: company:clickhouse/example
 ```
 
+Vault mappings also accept an explicit structured form:
+
+```yaml
+connections:
+  source:
+    kind: postgres
+    vault:
+      ref: ${ENV:POSTGRES__VAULT_REF|company:postgres/example}
+      kv_version: "2"
+  destination:
+    kind: clickhouse
+    vault:
+      ref: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+      kv_version: "2"
+```
+
 ## Top-level sections
 
 ### `version`

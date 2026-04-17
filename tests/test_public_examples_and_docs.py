@@ -5,6 +5,7 @@ from pathlib import Path
 from dlt_utils.clickhouse_helpers import get_expected_table_names
 from dlt_utils.vault_env import parse_vault_ref
 from dltaf.services.manifests.loader import load_manifest
+from dltaf.services.manifests.schema import validate_manifest_schema
 from dltaf.services.manifests.validator import validate_manifest
 
 
@@ -47,6 +48,57 @@ def test_public_vault_refs_use_supported_mount_colon_form() -> None:
     ref = parse_vault_ref("company:postgres/example")
     assert ref.mount_point == "company"
     assert ref.path == "postgres/example"
+
+
+def test_public_vault_refs_support_explicit_ref_and_kv_version_mapping() -> None:
+    ref = parse_vault_ref(
+        {
+            "ref": "company:postgres/example",
+            "kv_version": "2",
+        }
+    )
+    assert ref.mount_point == "company"
+    assert ref.path == "postgres/example"
+    assert ref.kv_version == "2"
+
+
+def test_manifest_schema_accepts_vault_mapping_contract() -> None:
+    validated = validate_manifest_schema(
+        {
+            "version": 1,
+            "pipeline": {
+                "name": "dlt__sample__to__clickhouse__raw",
+                "destination": "clickhouse",
+                "dataset": "raw",
+            },
+            "connections": {
+                "source": {
+                    "kind": "postgres",
+                    "vault": {
+                        "ref": "${ENV:POSTGRES__VAULT_REF|company:postgres/example}",
+                        "kv_version": "2",
+                    },
+                },
+                "destination": {
+                    "kind": "clickhouse",
+                    "vault": {
+                        "mount_point": "company",
+                        "path": "clickhouse/example",
+                        "kv_version": 2,
+                    },
+                },
+            },
+            "source": {
+                "kind": "sqldb",
+                "dialect": "generic",
+                "mode": "catalog",
+                "catalog": {"schema": "public", "tables": ["orders"]},
+            },
+        },
+        strict=True,
+        strict_source=True,
+    )
+    assert validated.connections is not None
 
 
 def test_docs_examples_page_mentions_canonical_examples() -> None:

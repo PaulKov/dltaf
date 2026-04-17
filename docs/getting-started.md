@@ -91,6 +91,7 @@ Supported Vault refs:
 - `vault://mount/path`
 - `mount:path`
 - mapping form with `mount_point`, `path`, and optional `kv_version`
+- mapping form with `ref` plus explicit `kv_version`
 
 Typical pattern:
 
@@ -102,6 +103,23 @@ connections:
   destination:
     kind: clickhouse
     vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+```
+
+When you want deterministic KV v2 reads for low-privilege AppRole tokens,
+pin the version explicitly:
+
+```yaml
+connections:
+  source:
+    kind: postgres
+    vault:
+      ref: ${ENV:POSTGRES__VAULT_REF|company:postgres/example}
+      kv_version: "2"
+  destination:
+    kind: clickhouse
+    vault:
+      ref: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+      kv_version: "2"
 ```
 
 ## 5. Add private integrations when you need them

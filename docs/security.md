@@ -25,6 +25,10 @@ Supported ref forms:
 - `vault://mount/path`
 - `mount:path`
 - mapping form with `mount_point`, `path`, `kv_version`
+- mapping form with `ref`, `kv_version`
+
+For low-privilege Vault roles, prefer the explicit mapping form with
+`kv_version: "2"` so the runtime does not need mount autodetection.
 
 ## Private integrations
 
