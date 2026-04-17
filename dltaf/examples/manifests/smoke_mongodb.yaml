@@ -1,7 +1,7 @@
 version: 1
 
 pipeline:
-  name: dlt__mongodb__to__clickhouse__raw
+  name: smoke_mongodb
   destination: clickhouse
   dataset: raw
   progress: log

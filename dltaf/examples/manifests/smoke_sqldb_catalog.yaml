@@ -1,7 +1,7 @@
 version: 1
 
 pipeline:
-  name: dlt__sqldb_catalog__to__clickhouse__raw
+  name: smoke_sqldb_catalog
   dataset: raw
   destination: clickhouse
   progress: log

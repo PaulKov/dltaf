@@ -23,7 +23,7 @@ Use this when you want a small table list from a relational database.
 version: 1
 
 pipeline:
-  name: dlt__sqldb_catalog__to__clickhouse__raw
+  name: smoke_sqldb_catalog
   destination: clickhouse
   dataset: raw
   progress: log

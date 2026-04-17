@@ -4,7 +4,7 @@
 version: 1
 
 pipeline:
-  name: dlt__oracle_custom_sql__to__clickhouse__raw
+  name: smoke_oracle_custom_sql
   destination: clickhouse
   dataset: raw
   progress: log
