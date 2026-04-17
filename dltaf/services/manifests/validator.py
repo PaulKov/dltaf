@@ -20,7 +20,13 @@ class ManifestValidator:
     def __init__(self, *, logger_: Optional[logging.Logger] = None) -> None:
         self.logger = logger_ or logger
 
-    def validate(self, manifest: Mapping[str, Any], *, strict_source: bool = False) -> None:
+    def validate(
+        self,
+        manifest: Mapping[str, Any],
+        *,
+        strict_source: bool = False,
+        enforce_filename_match: bool = True,
+    ) -> None:
         schema_model = validate_manifest_schema(
             manifest,
             strict=True,
@@ -29,10 +35,10 @@ class ManifestValidator:
         if isinstance(manifest, dict):
             internal = {k: v for k, v in manifest.items() if str(k).startswith("__")}
             manifest.clear()
-            manifest.update(schema_model.model_dump(mode="python", by_alias=True))
+            manifest.update(schema_model.model_dump(mode="json", by_alias=True, exclude_none=True))
             manifest.update(internal)
 
-        self._validate_common_rules(manifest)
+        self._validate_common_rules(manifest, enforce_filename_match=bool(enforce_filename_match))
         self._validate_hook_configuration(manifest)
         self._validate_online_checks_configuration(manifest)
         self._validate_payload_contract(manifest)
@@ -49,7 +55,7 @@ class ManifestValidator:
             raise ValueError("Runner plugins failed to load: " + "; ".join(plugin_errors))
         return registry.get(kind)
 
-    def _validate_common_rules(self, manifest: Mapping[str, Any]) -> None:
+    def _validate_common_rules(self, manifest: Mapping[str, Any], *, enforce_filename_match: bool) -> None:
         version = manifest.get("version")
         if version != 1:
             raise ValueError(f"Unsupported manifest version: {version!r} (expected 1)")
@@ -73,7 +79,7 @@ class ManifestValidator:
         except InvalidDependencyError as exc:
             raise ValueError(f"Invalid depends_on in manifest: {exc}") from exc
 
-        if manifest_path.name:
+        if enforce_filename_match and manifest_path.name:
             expected_name = manifest_path.stem
             if expected_name != name:
                 raise ValueError(
@@ -191,8 +197,17 @@ class ManifestValidator:
 _default_validator = ManifestValidator()
 
 
-def validate_manifest(manifest: Mapping[str, Any], *, strict_source: bool = False) -> None:
-    _default_validator.validate(manifest, strict_source=strict_source)
+def validate_manifest(
+    manifest: Mapping[str, Any],
+    *,
+    strict_source: bool = False,
+    enforce_filename_match: bool = True,
+) -> None:
+    _default_validator.validate(
+        manifest,
+        strict_source=strict_source,
+        enforce_filename_match=enforce_filename_match,
+    )
 
 
 def get_runner_for_manifest(manifest: Mapping[str, Any]) -> Any:

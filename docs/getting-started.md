@@ -24,7 +24,7 @@ pip install -e .[dev]
 The fastest way to understand the framework is to lint and plan a shipped manifest:
 
 ```bash
-dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --allow-filename-mismatch
 dltaf manifest run --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --plan
 ```
 

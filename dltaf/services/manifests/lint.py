@@ -50,6 +50,14 @@ def add_manifest_lint_arguments(parser) -> None:
             "By default the linter forbids unknown keys for known source kinds."
         ),
     )
+    parser.add_argument(
+        "--allow-filename-mismatch",
+        action="store_true",
+        help=(
+            "Skip the pipeline.name == manifest filename check. "
+            "Useful for shipped smoke examples where the file name is intentionally human-oriented."
+        ),
+    )
 
 
 class ManifestLintService:
@@ -70,12 +78,22 @@ class ManifestLintService:
             raise SystemExit("No manifests found")
         return selected
 
-    def lint_paths(self, paths: Iterable[Path], *, strict_source: bool) -> ManifestLintReport:
+    def lint_paths(
+        self,
+        paths: Iterable[Path],
+        *,
+        strict_source: bool,
+        enforce_filename_match: bool,
+    ) -> ManifestLintReport:
         items: List[ManifestLintItem] = []
         for path in paths:
             try:
                 manifest = load_manifest(path)
-                validate_manifest(manifest, strict_source=bool(strict_source))
+                validate_manifest(
+                    manifest,
+                    strict_source=bool(strict_source),
+                    enforce_filename_match=bool(enforce_filename_match),
+                )
                 items.append(ManifestLintItem(path=path, ok=True))
             except Exception as exc:
                 items.append(ManifestLintItem(path=path, ok=False, message=redact_text(str(exc))))
@@ -95,14 +113,23 @@ class ManifestLintService:
             manifests=list(args.manifest or []),
         )
         strict_source = not bool(args.lenient_source)
+        enforce_filename_match = not bool(args.allow_filename_mismatch)
         if bool(args.fail_fast):
             for path in paths:
-                report = self.lint_paths([path], strict_source=strict_source)
+                report = self.lint_paths(
+                    [path],
+                    strict_source=strict_source,
+                    enforce_filename_match=enforce_filename_match,
+                )
                 code = self.emit_report(report)
                 if code != 0:
                     return code
             return 0
-        report = self.lint_paths(paths, strict_source=strict_source)
+        report = self.lint_paths(
+            paths,
+            strict_source=strict_source,
+            enforce_filename_match=enforce_filename_match,
+        )
         return self.emit_report(report)
 
 

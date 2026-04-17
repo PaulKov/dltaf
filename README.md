@@ -54,7 +54,7 @@ pip install -e .[dev]
 Validate the canonical SQL example:
 
 ```bash
-dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --allow-filename-mismatch
 ```
 
 Render a safe execution plan without side effects:

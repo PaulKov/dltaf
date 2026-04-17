@@ -4,6 +4,8 @@ from pathlib import Path
 
 from dlt_utils.clickhouse_helpers import get_expected_table_names
 from dlt_utils.vault_env import parse_vault_ref
+from dltaf.services.manifests.loader import load_manifest
+from dltaf.services.manifests.validator import validate_manifest
 
 
 def test_public_examples_exist() -> None:
@@ -52,3 +54,8 @@ def test_docs_examples_page_mentions_canonical_examples() -> None:
     assert "smoke_sqldb_catalog.yaml" in text
     assert "smoke_sqldb_query.yaml" in text
     assert "smoke_mongodb.yaml" in text
+
+
+def test_shipped_example_can_be_linted_with_filename_mismatch_allowed() -> None:
+    manifest = load_manifest(Path("dltaf/examples/manifests/smoke_sqldb_catalog.yaml"))
+    validate_manifest(manifest, enforce_filename_match=False)

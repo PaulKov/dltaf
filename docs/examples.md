@@ -23,7 +23,7 @@ Use this when you want a small table list from a relational database.
 version: 1
 
 pipeline:
-  name: smoke_sqldb_catalog
+  name: dlt__sqldb_catalog__to__clickhouse__raw
   destination: clickhouse
   dataset: raw
   progress: log
@@ -60,7 +60,7 @@ source:
 Recommended smoke commands:
 
 ```bash
-dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml
+dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --allow-filename-mismatch
 dltaf manifest run --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --plan
 ```
 
