@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.3
+
+Airflow package-mode integration is now part of the public OSS release.
+
+Highlights:
+- `dag_builder` now includes the latest package-first `PythonVirtualenvOperator` bridge
+- slim install-profile helpers are shipped publicly in `dlt_utils.install_profiles`
+- generated DAG wrappers pass `manifests_dir` explicitly, so the installed wheel no longer depends on repo-local default paths
+- public package now exposes optional extra `dltaf[airflow]`
+
 ## 0.2.2
 
 Vault-backed manifest connections now support explicit KV version pinning.

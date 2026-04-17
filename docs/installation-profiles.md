@@ -58,7 +58,7 @@ airflow:
   task:
     use_virtualenv: true
     requirements:
-      - dltaf[clickhouse,sqldb,postgres]==0.2.2
+      - dltaf[clickhouse,sqldb,postgres]==0.2.3
 ```
 
 That keeps cold-start installs much smaller than a kitchen-sink runtime profile.
@@ -68,14 +68,14 @@ That keeps cold-start installs much smaller than a kitchen-sink runtime profile.
 Private runner or hook plugins still bring their own dependencies. A typical split is:
 
 ```bash
-pip install "dltaf[runtime]==0.2.2"
+pip install "dltaf[runtime]==0.2.3"
 pip install "company-private-plugin==1.2.3"
 ```
 
 or, for SQL-based private flows:
 
 ```bash
-pip install "dltaf[runtime,sqldb,oracle]==0.2.2"
+pip install "dltaf[runtime,sqldb,oracle]==0.2.3"
 pip install "company-private-plugin==1.2.3"
 ```
 

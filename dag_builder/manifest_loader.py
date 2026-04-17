@@ -35,11 +35,11 @@ class ManifestLoader:
         
         Args:
             base_dir: Базовая директория. Если не указана, используется директория 
-                     относительно текущего файла: dlt_pipelines/manifests/
+                     относительно текущего файла: dags/dlt_manifests/
         """
         if base_dir is None:
-            current = Path(__file__).parent.parent
-            base_dir = current / "dlt_pipelines" / "manifests"
+            current = Path(__file__).resolve().parent.parent.parent
+            base_dir = current / "dlt_manifests"
         
         self.base_dir = Path(base_dir).resolve()
         
