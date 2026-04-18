@@ -24,6 +24,7 @@ from .manifest.lint import ManifestLintCommand
 from .manifest.run import ManifestRunCommand
 from .manifest.schema import ManifestSchemaCommand
 from .runs.list import RunsListCommand
+from .runs.units import RunsUnitsCommand
 from .scaffold.integration import ScaffoldIntegrationCommand
 
 
@@ -92,7 +93,7 @@ def command_groups() -> list[CommandGroup]:
             name="runs",
             help="Просмотр audit-записей запусков pipeline.",
             description="Команды истории запусков.",
-            commands=(RunsListCommand(),),
+            commands=(RunsListCommand(), RunsUnitsCommand()),
         ),
         CommandGroup(
             name="scaffold",

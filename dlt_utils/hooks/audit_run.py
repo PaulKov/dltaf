@@ -10,7 +10,7 @@ from dlt_utils.clickhouse_helpers import get_clickhouse_client
 from dltaf.app.runtime import RunContext
 from dlt_utils.core.error_taxonomy import classify_exception
 from dltaf.services.execution.redaction import safe_exception_message, safe_json, safe_str
-from dlt_utils.core.run_result import LoadMetrics, RunResult, extract_load_metrics
+from dlt_utils.core.run_result import LoadMetrics, RunResult, UnitRunStats, extract_load_metrics
 
 
 def _quote_ident(name: str) -> str:
@@ -61,6 +61,7 @@ class AuditRunHook:
 
     name: str = "audit_run"
     table_name: str = "_pipeline_runs"
+    units_table_name: str = "_pipeline_run_units"
 
     def pre_run(self, manifest: Mapping[str, Any], ctx: RunContext) -> None:
         return
@@ -91,8 +92,9 @@ class AuditRunHook:
 
             db = os.getenv("DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE") or ctx.dataset or "default"
             table = self.table_name
+            units_table = self.units_table_name
 
-            self._ensure_table(client, db=db, table=table)
+            self._ensure_tables(client, db=db, table=table, units_table=units_table)
 
             # Structured result support
             payload_obj: Any = result
@@ -221,6 +223,14 @@ class AuditRunHook:
             # clickhouse-connect supports insert(table, data, column_names=[...])
             if hasattr(client, "insert"):
                 client.insert(f"{db}.{table}", [values], column_names=cols)
+                if isinstance(result, RunResult) and result.unit_stats:
+                    self._write_unit_rows(
+                        client=client,
+                        db=db,
+                        table=units_table,
+                        ctx=ctx,
+                        result=result,
+                    )
             else:  # pragma: no cover
                 ctx.logger.warning("AuditRunHook: ClickHouse client has no insert(); skipping")
 
@@ -228,7 +238,7 @@ class AuditRunHook:
             # Best-effort: do not fail the run
             ctx.logger.warning("AuditRunHook failed: %s", safe_exception_message(e), exc_info=True)
 
-    def _ensure_table(self, client: Any, *, db: str, table: str) -> None:
+    def _ensure_tables(self, client: Any, *, db: str, table: str, units_table: str) -> None:
         """Create database + audit table if they do not exist.
 
         If the table exists but schema is older, we add missing columns via ALTER.
@@ -291,3 +301,100 @@ ORDER BY (pipeline_name, started_at, run_id)
 
         for a in alters:
             client.command(f"ALTER TABLE {_quote_ident(db)}.{_quote_ident(table)} {a}")
+
+        units_ddl = f"""
+CREATE TABLE IF NOT EXISTS {_quote_ident(db)}.{_quote_ident(units_table)} (
+  run_id String,
+  pipeline_name String,
+  manifest_path String,
+  source_kind LowCardinality(String),
+  unit_kind LowCardinality(String),
+  unit_id String,
+  ordinal UInt32,
+  started_at DateTime64(3, 'UTC'),
+  finished_at DateTime64(3, 'UTC'),
+  duration_seconds Float64,
+  status LowCardinality(String),
+  stage LowCardinality(String),
+  rows_emitted Nullable(UInt64),
+  retry_count Nullable(UInt32),
+  warnings_count Nullable(UInt32),
+  external_id Nullable(String),
+  outcome_code Nullable(String),
+  error_kind Nullable(String),
+  error_message Nullable(String),
+  details_json Nullable(String)
+) ENGINE = MergeTree
+ORDER BY (pipeline_name, started_at, run_id, unit_kind, ordinal)
+""".strip()
+        client.command(units_ddl)
+
+    def _write_unit_rows(
+        self,
+        *,
+        client: Any,
+        db: str,
+        table: str,
+        ctx: RunContext,
+        result: RunResult,
+    ) -> None:
+        rows: list[list[Any]] = []
+        cols = [
+            "run_id",
+            "pipeline_name",
+            "manifest_path",
+            "source_kind",
+            "unit_kind",
+            "unit_id",
+            "ordinal",
+            "started_at",
+            "finished_at",
+            "duration_seconds",
+            "status",
+            "stage",
+            "rows_emitted",
+            "retry_count",
+            "warnings_count",
+            "external_id",
+            "outcome_code",
+            "error_kind",
+            "error_message",
+            "details_json",
+        ]
+
+        for item in result.unit_stats:
+            rows.append(self._map_unit_row(ctx=ctx, item=item))
+
+        if rows:
+            client.insert(f"{db}.{table}", rows, column_names=cols)
+
+    def _map_unit_row(self, *, ctx: RunContext, item: UnitRunStats) -> list[Any]:
+        details_json: Optional[str] = None
+        if item.details:
+            try:
+                details_json = json.dumps(dict(item.details), ensure_ascii=False)
+            except Exception:
+                details_json = safe_json(dict(item.details))
+
+        return [
+            ctx.run_id,
+            ctx.pipeline_name,
+            str(ctx.manifest_path),
+            ctx.source_kind,
+            item.unit_kind,
+            item.unit_id,
+            int(item.ordinal),
+            item.started_at,
+            item.finished_at,
+            float(item.duration_seconds),
+            item.status,
+            item.stage,
+            item.rows_emitted,
+            item.retry_count,
+            item.warnings_count,
+            item.external_id,
+            item.outcome_code,
+            item.error_kind,
+            item.error_message,
+            details_json,
+        ]

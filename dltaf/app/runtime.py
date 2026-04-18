@@ -21,6 +21,8 @@ class RunOptions:
     dry_run_online: bool = False
     dry_run_strict: bool = False
     plan: bool = False
+    observability_verbosity: str = "compact"
+    dlt_progress: str = "default"
     overrides: Mapping[str, Any] = field(default_factory=dict)
 
 
@@ -42,5 +44,14 @@ class RunContext:
     services: Optional["ApplicationServices"] = None
 
     def elapsed_seconds(self, now: Optional[datetime] = None) -> float:
-        n = now or datetime.utcnow()
+        if now is not None:
+            n = now
+        elif self.started_at.tzinfo is not None:
+            n = datetime.now(self.started_at.tzinfo)
+        else:
+            n = datetime.utcnow()
+        if self.started_at.tzinfo is not None and n.tzinfo is None:
+            n = n.replace(tzinfo=self.started_at.tzinfo)
+        elif self.started_at.tzinfo is None and n.tzinfo is not None:
+            n = n.replace(tzinfo=None)
         return max(0.0, (n - self.started_at).total_seconds())

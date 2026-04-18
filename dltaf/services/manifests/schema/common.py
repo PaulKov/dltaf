@@ -219,6 +219,25 @@ class PartialSuccessConfigStrict(PartialSuccessConfig, ForbidExtraModel):
     pass
 
 
+class ObservabilityVerbosityEnum(str, Enum):
+    COMPACT = "compact"
+    VERBOSE = "verbose"
+
+
+class DltProgressModeEnum(str, Enum):
+    DEFAULT = "default"
+    SUMMARY_ONLY = "summary_only"
+
+
+class ObservabilityConfig(AllowExtraModel):
+    verbosity: ObservabilityVerbosityEnum = ObservabilityVerbosityEnum.COMPACT
+    dlt_progress: DltProgressModeEnum = DltProgressModeEnum.DEFAULT
+
+
+class ObservabilityConfigStrict(ObservabilityConfig, ForbidExtraModel):
+    pass
+
+
 class RunConfig(AllowExtraModel):
     write_disposition: Optional[str] = None
     hooks: Optional[HooksConfig] = None
@@ -226,12 +245,14 @@ class RunConfig(AllowExtraModel):
     online_checks: Optional[OnlineChecksConfig] = None
     replace_policy: Optional[ReplacePolicyConfig] = None
     partial_success: Optional[PartialSuccessConfig] = None
+    observability: Optional[ObservabilityConfig] = None
 
 
 class RunConfigStrict(RunConfig, ForbidExtraModel):
     runners: Optional[RunnersConfigStrict] = None
     replace_policy: Optional[ReplacePolicyConfigStrict] = None
     partial_success: Optional[PartialSuccessConfigStrict] = None
+    observability: Optional[ObservabilityConfigStrict] = None
 
 
 class ConnectionSpec(AllowExtraModel):

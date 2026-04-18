@@ -79,6 +79,7 @@ def _manifest(*, source_kind: str = "sql_database", source_mode: str | None = No
 
 def test_manifest_validation_accepts_partial_success_for_sql_database() -> None:
     manifest = _manifest()
+    manifest["run"]["observability"] = {"verbosity": "verbose", "dlt_progress": "summary_only"}
     validate_manifest(manifest, strict_source=True, enforce_filename_match=False)
     policy = resolve_partial_success_policy(manifest)
     assert policy is not None

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.5
+
+API-style runners now support framework-level unit observability and queryable unit audit history.
+
+Highlights:
+- new structured `UnitRunStats` and `RunResult.unit_stats` contract for per-unit execution telemetry
+- built-in runtime summary now renders unit-level tables and rollups alongside existing per-table SQL summaries
+- built-in audit hook now writes detailed unit rows into ClickHouse `<dataset>._pipeline_run_units`
+- new `dltaf runs units` CLI command for self-service inspection of per-unit audit history
+- `run.observability` added to manifest schema with `verbosity` and `dlt_progress` controls
+- `pkb_conclusion` private runner can now emit full per-BIN lifecycle, requestId/decision, timings, rows and aggregated PKB rollups
+
 ## 0.2.4
 
 SQL catalog manifests now support framework-level partial-success execution and structured table-level runtime summaries.
