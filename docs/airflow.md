@@ -47,7 +47,7 @@ airflow:
   task:
     use_virtualenv: true
     requirements:
-      - dltaf[clickhouse,sqldb,postgres]==0.2.5
+      - dltaf[clickhouse,sqldb,postgres]==0.2.6
 ```
 
 Typical mappings:

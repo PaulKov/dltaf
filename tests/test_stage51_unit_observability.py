@@ -5,6 +5,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dltaf.app.runtime import RunContext, RunOptions
+from dltaf import UnitProgressLogger as PublicUnitProgressLogger
+from dltaf import UnitRunStats as PublicUnitRunStats
+from dltaf import build_unit_rollup as public_build_unit_rollup
+from dltaf import build_run_result as public_build_run_result
 from dlt_utils.core.run_result import RunResult, UnitRunStats
 from dlt_utils.hooks.audit_run import AuditRunHook
 from dlt_utils.hooks.runtime_summary import RuntimeSummaryHook
@@ -44,6 +48,18 @@ def _unit(status: str = "success", *, ordinal: int = 1, unit_id: str = "96104000
         error_message=None if status == "success" else "decision is 'DECLINED'",
         details={"requested_report": True},
     )
+
+
+def test_public_dltaf_namespace_exports_runtime_result_contracts() -> None:
+    assert PublicUnitRunStats is UnitRunStats
+    logger = PublicUnitProgressLogger(
+        logging.getLogger("public-export-test"),
+        unit_kind="bin",
+        total_units=1,
+    )
+    assert isinstance(logger, PublicUnitProgressLogger)
+    assert public_build_unit_rollup((_unit(),)).succeeded_units == 1
+    assert callable(public_build_run_result)
 
 
 def test_runtime_summary_logs_unit_summary(caplog) -> None:

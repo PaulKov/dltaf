@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.6
+
+Package-first consumers now import runtime result contracts directly from the public `dltaf` namespace.
+
+Highlights:
+- public `dltaf` exports now include `RunResult`, `UnitRunStats`, `build_run_result`, and related runtime helpers
+- private consumer plugins no longer need legacy `dlt_utils.*` imports for framework-core result contracts
+- package-first environments are more robust when legacy compatibility paths are also present on `sys.path`
+
 ## 0.2.5
 
 API-style runners now support framework-level unit observability and queryable unit audit history.

@@ -1,9 +1,30 @@
-"""dp-dlt-af v2 package skeleton.
+"""Public package surface for `dltaf`.
 
-This package is introduced as a clean, future-facing namespace for the large
-OOP refactor. Existing modules (`dlt_utils`, `cli`, `dag_builder`, ...) remain
-supported and act as backward-compatible façades.
+`dltaf` is the canonical framework namespace. Existing legacy modules
+(`dlt_utils`, `cli`, `dag_builder`, ...) remain available as compatibility
+facades, but new consumer code should import framework contracts from here.
 """
 
-__all__ = ["__version__"]
-__version__ = "0.2.5"
+from dlt_utils.core.run_result import (
+    LoadMetrics,
+    RunResult,
+    TableRunStats,
+    UnitRunStats,
+    build_run_result,
+    extract_load_metrics,
+)
+from dlt_utils.core.unit_observability import UnitProgressLogger, UnitRollup, build_unit_rollup
+
+__all__ = [
+    "__version__",
+    "LoadMetrics",
+    "RunResult",
+    "TableRunStats",
+    "UnitProgressLogger",
+    "UnitRollup",
+    "UnitRunStats",
+    "build_run_result",
+    "build_unit_rollup",
+    "extract_load_metrics",
+]
+__version__ = "0.2.6"
