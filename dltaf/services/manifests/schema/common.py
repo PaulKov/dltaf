@@ -240,6 +240,7 @@ class ObservabilityConfigStrict(ObservabilityConfig, ForbidExtraModel):
 
 class RunConfig(AllowExtraModel):
     write_disposition: Optional[str] = None
+    replace_scope: Optional[str] = None
     hooks: Optional[HooksConfig] = None
     runners: Optional[RunnersConfig] = None
     online_checks: Optional[OnlineChecksConfig] = None
@@ -363,6 +364,8 @@ class AirflowConfig(AllowExtraModel):
     execution_timeout_hours: Optional[Union[int, str]] = None
     default_args: Optional[Dict[str, Any]] = None
     task: Optional[Dict[str, Any]] = None
+    params: Optional[Dict[str, Any]] = None
+    runtime_overrides: Optional[Dict[str, Any]] = None
 
     @field_validator("dag_id", "schedule", "start_date")
     @classmethod
