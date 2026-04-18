@@ -1086,6 +1086,7 @@ class TaskFactory:
         
         # Специфичные параметры
         final_config["configure_logging"] = task_cfg.get("configure_logging", False)
+        final_config["doc_md"] = self._build_task_doc_md(manifest)
         
         # Для virtualenv: requirements и system_site_packages
         if "requirements" in task_cfg:
@@ -1101,6 +1102,31 @@ class TaskFactory:
             final_config["system_site_packages"] = task_cfg["system_site_packages"]
         
         return final_config
+
+    def _build_task_doc_md(self, manifest: Dict[str, Any]) -> str:
+        pipeline = manifest.get("pipeline", {}) or {}
+        source = manifest.get("source", {}) or {}
+        run_cfg = manifest.get("run", {}) or {}
+        partial_cfg = run_cfg.get("partial_success") or {}
+
+        lines = [
+            f"### `{pipeline.get('name', 'unknown_pipeline')}`",
+            "",
+            f"- source kind: `{source.get('kind', 'unknown')}`",
+            f"- destination: `{pipeline.get('destination', 'unknown')}`",
+            f"- dataset: `{pipeline.get('dataset', 'unknown')}`",
+            f"- write_disposition: `{run_cfg.get('write_disposition', 'merge')}`",
+        ]
+        if partial_cfg:
+            lines.extend(
+                [
+                    "",
+                    "#### Partial Success",
+                    f"- mode: `{partial_cfg.get('mode', 'n/a')}`",
+                    f"- tolerate_errors: `{partial_cfg.get('tolerate_errors', 'n/a')}`",
+                ]
+            )
+        return "\n".join(lines)
     
     def _build_task_id(self, pipeline_name: str) -> str:
         """Создает task_id из имени пайплайна.

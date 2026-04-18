@@ -123,6 +123,41 @@ source:
       - customers
 ```
 
+#### Optional partial-success policy for catalog loads
+
+Use this when one or more catalog tables may be absent or flaky, but the run
+should still succeed if the configured policy is satisfied.
+
+```yaml
+run:
+  write_disposition: merge
+  partial_success:
+    mode: any_success
+    tolerate_errors: any_per_table
+
+source:
+  kind: sqldb
+  dialect: generic
+  mode: catalog
+  catalog:
+    schema: public
+    tables:
+      - orders
+      - customers
+```
+
+Supported modes:
+
+- `any_success`
+- `critical_tables`
+- `threshold`
+
+Supported error toleration policies:
+
+- `missing_table_only`
+- `source_only`
+- `any_per_table`
+
 ### Query mode
 
 Use this for Oracle query files:

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.4
+
+SQL catalog manifests now support framework-level partial-success execution and structured table-level runtime summaries.
+
+Highlights:
+- `run.partial_success` added for `sql_database` and `sqldb` catalog manifests
+- catalog mode can now tolerate per-table failures and still succeed when policy conditions are met
+- built-in runtime summary hook prints compact per-table and rollup statistics for all jobs
+- ClickHouse target stats now include best-effort before/after rows and storage deltas per table
+- Airflow task docs now surface partial-success mode without changing `task_id`
+
 ## 0.2.3
 
 Airflow package-mode integration is now part of the public OSS release.

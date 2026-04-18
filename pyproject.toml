@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dltaf"
-version = "0.2.3"
+version = "0.2.4"
 description = "Manifest-driven data loading framework with canonical SQLDB manifests, Airflow helpers, and pluggable private integrations."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,7 @@ dependencies = [
   "dlt>=1.18.2,<2",
   "PyYAML>=6.0.1",
   "pydantic>=2.8,<3",
+  "prettytable>=3.12,<4",
 ]
 
 [project.urls]

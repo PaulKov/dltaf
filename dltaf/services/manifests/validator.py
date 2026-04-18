@@ -39,6 +39,7 @@ class ManifestValidator:
             manifest.update(internal)
 
         self._validate_common_rules(manifest, enforce_filename_match=bool(enforce_filename_match))
+        self._validate_partial_success_configuration(manifest)
         self._validate_hook_configuration(manifest)
         self._validate_online_checks_configuration(manifest)
         self._validate_payload_contract(manifest)
@@ -134,6 +135,25 @@ class ManifestValidator:
         unknown = sorted(requested - allowed)
         if unknown:
             raise ValueError("Unknown hook name(s) in run.hooks: " + ", ".join(unknown))
+
+    def _validate_partial_success_configuration(self, manifest: Mapping[str, Any]) -> None:
+        run_cfg = manifest.get("run") or {}
+        partial_cfg = (run_cfg.get("partial_success") or {}) if isinstance(run_cfg, Mapping) else {}
+        if not partial_cfg:
+            return
+        if not isinstance(partial_cfg, Mapping):
+            raise ValueError("run.partial_success must be a mapping")
+
+        source = manifest.get("source") or {}
+        kind = str(source.get("kind") or "").strip().lower()
+        mode = str(source.get("mode") or "").strip().lower()
+
+        supported = kind == "sql_database" or (kind == "sqldb" and mode == "catalog")
+        if not supported:
+            raise ValueError(
+                "run.partial_success is supported only for source.kind=sql_database "
+                "or source.kind=sqldb with mode=catalog"
+            )
 
     def _validate_online_checks_configuration(self, manifest: Mapping[str, Any]) -> None:
         run_cfg = manifest.get("run") or {}

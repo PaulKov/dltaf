@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import field_validator, model_validator
@@ -136,17 +137,101 @@ class ReplacePolicyConfigStrict(ReplacePolicyConfig, ForbidExtraModel):
     pass
 
 
+class PartialSuccessModeEnum(str, Enum):
+    ANY_SUCCESS = "any_success"
+    CRITICAL_TABLES = "critical_tables"
+    THRESHOLD = "threshold"
+
+
+class PartialSuccessToleranceEnum(str, Enum):
+    ANY_PER_TABLE = "any_per_table"
+    SOURCE_ONLY = "source_only"
+    MISSING_TABLE_ONLY = "missing_table_only"
+
+
+class PartialSuccessConfig(AllowExtraModel):
+    mode: PartialSuccessModeEnum
+    tolerate_errors: PartialSuccessToleranceEnum = PartialSuccessToleranceEnum.SOURCE_ONLY
+    critical_tables: Optional[List[str]] = None
+    min_success_tables: Optional[Union[int, str]] = None
+    min_success_ratio: Optional[Union[float, str]] = None
+
+    @field_validator("critical_tables")
+    @classmethod
+    def normalize_critical_tables(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, str):
+            value = [value]
+        items = [str(item).strip() for item in (value or []) if str(item).strip()]
+        if not items:
+            raise ValueError("run.partial_success.critical_tables must be a non-empty list")
+        return items
+
+    @field_validator("min_success_tables")
+    @classmethod
+    def min_success_tables_intish(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        parsed = coerce_int_or_env(value)
+        try:
+            if not is_env_placeholder(parsed) and int(parsed) <= 0:
+                raise ValueError("run.partial_success.min_success_tables must be > 0")
+        except ValueError:
+            raise
+        except Exception:
+            pass
+        return parsed
+
+    @field_validator("min_success_ratio")
+    @classmethod
+    def min_success_ratio_floatish(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if is_env_placeholder(value):
+            return value
+        try:
+            parsed = float(value)
+        except Exception as exc:
+            raise ValueError("run.partial_success.min_success_ratio must be a float in [0, 1]") from exc
+        if parsed < 0.0 or parsed > 1.0:
+            raise ValueError("run.partial_success.min_success_ratio must be in [0, 1]")
+        return parsed
+
+    @model_validator(mode="after")
+    def validate_mode_requirements(self) -> "PartialSuccessConfig":
+        if self.mode == PartialSuccessModeEnum.ANY_SUCCESS:
+            return self
+        if self.mode == PartialSuccessModeEnum.CRITICAL_TABLES:
+            if not self.critical_tables:
+                raise ValueError("run.partial_success.critical_tables is required for mode=critical_tables")
+            return self
+        if self.mode == PartialSuccessModeEnum.THRESHOLD:
+            if self.min_success_tables is None and self.min_success_ratio is None:
+                raise ValueError(
+                    "run.partial_success requires min_success_tables and/or min_success_ratio for mode=threshold"
+                )
+            return self
+        return self
+
+
+class PartialSuccessConfigStrict(PartialSuccessConfig, ForbidExtraModel):
+    pass
+
+
 class RunConfig(AllowExtraModel):
     write_disposition: Optional[str] = None
     hooks: Optional[HooksConfig] = None
     runners: Optional[RunnersConfig] = None
     online_checks: Optional[OnlineChecksConfig] = None
     replace_policy: Optional[ReplacePolicyConfig] = None
+    partial_success: Optional[PartialSuccessConfig] = None
 
 
 class RunConfigStrict(RunConfig, ForbidExtraModel):
     runners: Optional[RunnersConfigStrict] = None
     replace_policy: Optional[ReplacePolicyConfigStrict] = None
+    partial_success: Optional[PartialSuccessConfigStrict] = None
 
 
 class ConnectionSpec(AllowExtraModel):

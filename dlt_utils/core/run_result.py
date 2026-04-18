@@ -50,6 +50,61 @@ class LoadMetrics:
 
 
 @dataclass(frozen=True)
+class TableRunStats:
+    """Best-effort per-table execution metrics."""
+
+    source_table: str
+    target_table: str
+    started_at: datetime
+    finished_at: datetime
+    duration_seconds: float
+    status: str
+    error_kind: Optional[str] = None
+    error_message: Optional[str] = None
+    rows_processed: Optional[int] = None
+    rows_inserted: Optional[int] = None
+    rows_updated: Optional[int] = None
+    rows_deleted: Optional[int] = None
+    rows_before: Optional[int] = None
+    rows_after: Optional[int] = None
+    delta_rows: Optional[int] = None
+    delta_pct: Optional[float] = None
+    size_gb_before: Optional[float] = None
+    size_gb_after: Optional[float] = None
+    delta_gb: Optional[float] = None
+    rps: Optional[float] = None
+    gbps: Optional[float] = None
+
+    def to_dict(self, *, include_none: bool = False) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "source_table": self.source_table,
+            "target_table": self.target_table,
+            "started_at": self.started_at.isoformat() + "Z",
+            "finished_at": self.finished_at.isoformat() + "Z",
+            "duration_seconds": self.duration_seconds,
+            "status": self.status,
+            "error_kind": self.error_kind,
+            "error_message": self.error_message,
+            "rows_processed": self.rows_processed,
+            "rows_inserted": self.rows_inserted,
+            "rows_updated": self.rows_updated,
+            "rows_deleted": self.rows_deleted,
+            "rows_before": self.rows_before,
+            "rows_after": self.rows_after,
+            "delta_rows": self.delta_rows,
+            "delta_pct": self.delta_pct,
+            "size_gb_before": self.size_gb_before,
+            "size_gb_after": self.size_gb_after,
+            "delta_gb": self.delta_gb,
+            "rps": self.rps,
+            "gbps": self.gbps,
+        }
+        if include_none:
+            return d
+        return {k: v for k, v in d.items() if v is not None}
+
+
+@dataclass(frozen=True)
 class RunResult:
     """Structured run result passed to hooks.
 
@@ -66,6 +121,9 @@ class RunResult:
     payload: Any = None
     plan: Optional[Mapping[str, Any]] = None
     load_metrics: Optional[LoadMetrics] = None
+    warnings: Sequence[str] = field(default_factory=tuple)
+    table_stats: Sequence[TableRunStats] = field(default_factory=tuple)
+    message: Optional[str] = None
 
     finished_at: datetime = field(default_factory=datetime.utcnow)
     duration_seconds: float = 0.0
@@ -79,9 +137,12 @@ class RunResult:
 
         obj = {
             "status": self.status,
+            "message": self.message,
             "duration_seconds": self.duration_seconds,
             "finished_at": self.finished_at.isoformat() + "Z",
             "load_metrics": self.load_metrics.to_dict() if self.load_metrics else None,
+            "warnings": list(self.warnings or ()),
+            "table_stats": [table.to_dict() for table in self.table_stats or ()],
             "plan": self.plan,
             "payload_type": type(self.payload).__name__ if self.payload is not None else None,
         }
@@ -221,6 +282,26 @@ def extract_load_metrics(payload: Any) -> Optional[LoadMetrics]:
         failed_jobs_count=failed_jobs_count if jobs_count else None,
         tables_count=tables_count,
         rows_count=rows_count if rows_seen else None,
+    )
+
+
+def merge_load_metrics(metrics_items: Sequence[Optional[LoadMetrics]]) -> Optional[LoadMetrics]:
+    meaningful = [item for item in metrics_items if item is not None]
+    if not meaningful:
+        return None
+
+    packages_count = sum(int(item.packages_count or 0) for item in meaningful)
+    jobs_count = sum(int(item.jobs_count or 0) for item in meaningful)
+    failed_jobs_count = sum(int(item.failed_jobs_count or 0) for item in meaningful)
+    tables_count = sum(int(item.tables_count or 0) for item in meaningful)
+    rows_count = sum(int(item.rows_count or 0) for item in meaningful)
+
+    return LoadMetrics(
+        packages_count=packages_count or None,
+        jobs_count=jobs_count or None,
+        failed_jobs_count=failed_jobs_count or None,
+        tables_count=tables_count or None,
+        rows_count=rows_count or None,
     )
 
 
