@@ -1,0 +1,40 @@
+version: 1
+
+pipeline:
+  name: dlt__mongodb__to__clickhouse__raw
+  destination: clickhouse
+  dataset: raw
+  progress: log
+  dev_mode: false
+
+run:
+  write_disposition: replace
+
+connections:
+  source:
+    kind: mongodb
+    vault: ${ENV:MONGODB__VAULT_REF|company:mongodb/example}
+  destination:
+    kind: clickhouse
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+    overrides:
+      database: raw
+      dataset_table_separator: __
+
+source:
+  kind: mongodb
+  database: analytics
+  collection_names:
+    - users
+    - events
+  max_table_nesting: 2
+
+airflow:
+  dag_id: dlt__mongodb__to__clickhouse__raw
+  schedule: "0 5 * * *"
+  start_date: "2025-01-01"
+  catchup: false
+  max_active_runs: 1
+  tags:
+    - dlt
+    - mongodb

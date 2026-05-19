@@ -1,24 +1,45 @@
 # dltaf
 
-`dltaf` is a manifest-driven orchestration layer for `dlt` pipelines. It combines:
-- readable YAML manifests
-- reusable runtime helpers
-- Airflow-friendly task generation
-- a plugin registry for private integrations
+`dltaf` is a manifest-driven framework for repeatable data ingestion and orchestration.
 
-The public repository intentionally ships only generic built-ins. Private connectors should stay in a local monorepo catalog or a private package, and plug into the same registry contract.
+It gives you:
 
-## What you get
+- a canonical public YAML contract
+- built-in support for `sqldb` and `mongodb`
+- compatibility shims for older SQL manifests
+- Airflow DAG generation and runtime helpers
+- extension registries for private runners, hooks, and infra checks
 
-- built-in `oracle_custom_sql`, `sql_database`, and `mongodb` source kinds
-- `dltaf plugins` CLI for inspection and diagnostics
-- `dltaf-run` for manifest validation and execution
-- `dltaf-generate-dags` for Airflow DAG generation
-- `dltaf-show-lineage` for dependency inspection
+## Public vs private boundary
 
-## Recommended reading order
+The OSS repository intentionally ships only the reusable core:
+
+- canonical SQL and MongoDB integrations
+- generic execution services
+- templating, linting, lineage, and Airflow tooling
+- a stable extension contract for private modules
+
+Internal business-specific connectors should stay in:
+
+- a private monorepo package
+- or a private Python distribution
+
+They plug into the same registries, so the public core stays clean while private teams keep their own domain logic.
+
+## What is canonical today
+
+The current public recommendation is:
+
+- use `source.kind: sqldb` for new relational manifests
+- use `source.kind: mongodb` for MongoDB ingestion
+- treat `sql_database`, `oracle_custom_sql`, and `oracle` as compatibility aliases only
+
+## Suggested reading order
 
 1. [Getting Started](getting-started.md)
-2. [Plugins](plugins.md)
-3. [Airflow](airflow.md)
+2. [Installation Profiles](installation-profiles.md)
+3. [Manifest Model](manifests.md)
 4. [Examples](examples.md)
+5. [Plugins and Private Integrations](plugins.md)
+6. [Airflow](airflow.md)
+7. [Compatibility and Migration](compatibility.md)

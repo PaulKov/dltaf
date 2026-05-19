@@ -24,6 +24,7 @@ def parse_vault_ref(ref: Any) -> VaultSecretRef:
       - "vault://<mount>/<path>"
       - "<mount>:<path>"  (recommended)
       - {mount_point: ..., path: ..., kv_version: ...}
+      - {ref: "mount:path", kv_version: ...}
     """
     if ref is None:
         raise ValueError("vault ref is required")
@@ -32,12 +33,25 @@ def parse_vault_ref(ref: Any) -> VaultSecretRef:
         return ref
 
     if isinstance(ref, Mapping):
+        if "ref" in ref:
+            nested_ref = parse_vault_ref(ref.get("ref"))
+            kv_version = ref.get("kv_version", nested_ref.kv_version)
+            return VaultSecretRef(
+                mount_point=nested_ref.mount_point,
+                path=nested_ref.path,
+                kv_version=str(kv_version) if kv_version not in (None, "") else None,
+            )
+
         mp = str(ref.get("mount_point") or ref.get("mount") or "").strip()
         path = str(ref.get("path") or "").strip().strip("/")
         kv_version = ref.get("kv_version")
         if not mp or not path:
             raise ValueError(f"invalid vault ref dict: {ref}")
-        return VaultSecretRef(mount_point=mp.rstrip("/"), path=path, kv_version=kv_version)
+        return VaultSecretRef(
+            mount_point=mp.rstrip("/"),
+            path=path,
+            kv_version=str(kv_version) if kv_version not in (None, "") else None,
+        )
 
     if not isinstance(ref, str):
         raise ValueError(f"vault ref must be str or mapping, got: {type(ref)}")
@@ -90,6 +104,32 @@ def _as_bool(v: Any, default: bool = False) -> bool:
     return default
 
 
+def normalize_env_prefix(prefix: Any, *, default: str = "") -> str:
+    """Normalize an ENV prefix to always end with ``__``.
+
+    Examples:
+        - "KAFKA" -> "KAFKA__"
+        - "KAFKA__" -> "KAFKA__"
+        - "SOURCES__KAFKA" -> "SOURCES__KAFKA__"
+
+    Args:
+        prefix: input prefix
+        default: returned when prefix is empty/None
+
+    Returns:
+        Normalized prefix.
+    """
+
+    if prefix is None:
+        return default
+    p = str(prefix).strip()
+    if not p:
+        return default
+    # Ensure exactly one "__" suffix (allow internal "__" parts).
+    p = p.rstrip("_")
+    return f"{p}__"
+
+
 def apply_overrides(secret: Mapping[str, Any], overrides: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
     out = dict(secret or {})
     if overrides:
@@ -99,23 +139,22 @@ def apply_overrides(secret: Mapping[str, Any], overrides: Optional[Mapping[str, 
 
 
 def get_secret_from_vault(ref: VaultSecretRef) -> Dict[str, Any]:
-    """Fetch secret from Vault via ``vault-kv-client``.
+    """Fetch a KV secret through ``vault-kv-client``.
 
-    Vault auth is configured via ENV/Airflow Variables:
-      - VAULT_ADDRESS/VAULT_ADDR
-      - VAULT_TOKEN  OR  VAULT_ROLE_ID + VAULT_SECRET_ID
-      - optional VAULT_NAMESPACE, VAULT_VERIFY
-
-    Returns a dict with secret data (KV v1/v2 supported).
+    ``dltaf`` deliberately delegates Vault authentication and transport details
+    to the dedicated OSS client. That keeps this repository free from
+    repo-local path hacks and makes the same secret contract work in local
+    development, CI, and Airflow.
     """
     try:
         from vault_kv_client import get_default_manager
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover - import failure is environment-specific
         raise RuntimeError(
             "vault-kv-client is required for manifest Vault integration. "
             "Install dependency 'vault-kv-client>=0.1.0'."
         ) from exc
 
+    _ensure_vault_env_aliases()
     manager = get_default_manager()
     secret = manager.get_secret(
         mount_point=ref.mount_point,
@@ -123,6 +162,24 @@ def get_secret_from_vault(ref: VaultSecretRef) -> Dict[str, Any]:
         kv_version=ref.kv_version,
     )
     return dict(secret)
+
+
+def _ensure_vault_env_aliases() -> None:
+    """Normalize Vault env aliases expected by ``vault-kv-client``.
+
+    Consumer runtimes often expose ``VAULT_ADDRESS``, while the public client
+    contract uses ``VAULT_ADDR``. Keep both names aligned before constructing
+    the default manager so package-mode runtimes stay portable.
+    """
+
+    vault_addr = str(os.getenv("VAULT_ADDR", "") or "").strip()
+    vault_address = str(os.getenv("VAULT_ADDRESS", "") or "").strip()
+
+    if not vault_addr and vault_address:
+        os.environ["VAULT_ADDR"] = vault_address
+
+    if not vault_address and vault_addr:
+        os.environ["VAULT_ADDRESS"] = vault_addr
 
 
 def build_clickhouse_env(
@@ -239,6 +296,105 @@ def build_mongodb_env(secret: Mapping[str, Any]) -> Dict[str, str]:
     return {
         "SOURCES__MONGODB__CONNECTION_URL": url,
     }
+
+
+def build_kafka_env(
+    secret: Mapping[str, Any],
+    *,
+    env_prefix: str = "KAFKA__",
+) -> Dict[str, str]:
+    """Map a Kafka secret dict to ENV vars.
+
+    This framework intentionally keeps Kafka settings in *generic* ENV vars
+    (not tied to a specific integration), so that future custom API/Kafka
+    sources can reuse the same approach.
+
+    Supported secret keys (aliases):
+        - bootstrap servers: bootstrap_servers, bootstrapServers, brokers, servers
+        - security protocol: security_protocol, securityProtocol, protocol
+        - sasl mechanism: sasl_mechanism, saslMechanism, mechanism
+        - sasl username: sasl_username, saslUser, username, user
+        - sasl password: sasl_password, password, pass
+        - ssl file paths: ssl_cafile/certfile/keyfile (and common aliases)
+        - ssl_check_hostname: ssl_check_hostname
+
+    All values are mapped as strings.
+    """
+
+    pfx = normalize_env_prefix(env_prefix, default="KAFKA__")
+
+    # bootstrap servers
+    bs = _coalesce(
+        secret.get("bootstrap_servers"),
+        secret.get("bootstrapServers"),
+        secret.get("brokers"),
+        secret.get("servers"),
+        secret.get("bootstrap"),
+        default=None,
+    )
+    if isinstance(bs, (list, tuple)):
+        bs_str = ",".join([str(x).strip() for x in bs if str(x).strip()])
+    else:
+        bs_str = str(bs).strip() if bs is not None else ""
+
+    security_protocol = _coalesce(
+        secret.get("security_protocol"),
+        secret.get("securityProtocol"),
+        secret.get("protocol"),
+        default=None,
+    )
+    sasl_mechanism = _coalesce(
+        secret.get("sasl_mechanism"),
+        secret.get("saslMechanism"),
+        secret.get("mechanism"),
+        default=None,
+    )
+    sasl_username = _coalesce(
+        secret.get("sasl_username"),
+        secret.get("saslUser"),
+        secret.get("username"),
+        secret.get("user"),
+        default=None,
+    )
+    sasl_password = _coalesce(
+        secret.get("sasl_password"),
+        secret.get("password"),
+        secret.get("pass"),
+        default=None,
+    )
+
+    ssl_cafile = _coalesce(secret.get("ssl_cafile"), secret.get("cafile"), secret.get("sslCaFile"), default=None)
+    ssl_certfile = _coalesce(
+        secret.get("ssl_certfile"), secret.get("certfile"), secret.get("sslCertFile"), default=None
+    )
+    ssl_keyfile = _coalesce(secret.get("ssl_keyfile"), secret.get("keyfile"), secret.get("sslKeyFile"), default=None)
+
+    ssl_check_hostname = secret.get("ssl_check_hostname")
+
+    env: Dict[str, str] = {}
+    if bs_str:
+        env[f"{pfx}BOOTSTRAP_SERVERS"] = bs_str
+
+    if security_protocol is not None and str(security_protocol).strip() != "":
+        env[f"{pfx}SECURITY_PROTOCOL"] = str(security_protocol).strip()
+    if sasl_mechanism is not None and str(sasl_mechanism).strip() != "":
+        env[f"{pfx}SASL_MECHANISM"] = str(sasl_mechanism).strip()
+    if sasl_username is not None and str(sasl_username).strip() != "":
+        env[f"{pfx}SASL_USERNAME"] = str(sasl_username).strip()
+    if sasl_password is not None and str(sasl_password).strip() != "":
+        env[f"{pfx}SASL_PASSWORD"] = str(sasl_password).strip()
+
+    if ssl_cafile is not None and str(ssl_cafile).strip() != "":
+        env[f"{pfx}SSL_CAFILE"] = str(ssl_cafile).strip()
+    if ssl_certfile is not None and str(ssl_certfile).strip() != "":
+        env[f"{pfx}SSL_CERTFILE"] = str(ssl_certfile).strip()
+    if ssl_keyfile is not None and str(ssl_keyfile).strip() != "":
+        env[f"{pfx}SSL_KEYFILE"] = str(ssl_keyfile).strip()
+
+    if ssl_check_hostname is not None and str(ssl_check_hostname).strip() != "":
+        env[f"{pfx}SSL_CHECK_HOSTNAME"] = "1" if _as_bool(ssl_check_hostname, default=True) else "0"
+
+    return env
 
 
 def build_keycloak_env(secret: Mapping[str, Any]) -> Dict[str, str]:

@@ -4,6 +4,7 @@
 .venv/
 .venv_oss/
 .smoke_install/
+.tmp-*/
 __pycache__/
 *.egg-info/
 *.pyc

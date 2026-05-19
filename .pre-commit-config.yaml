@@ -1,0 +1,112 @@
+repos:
+  # Basic hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # Secret scanning (detect-secrets)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: ^\.secrets\.baseline$
+
+  # Python lint + format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.4
+    hooks:
+      - id: ruff-check
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+
+  # Optional: static typing (manual stage, not enforced on every commit)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.1
+    hooks:
+      - id: mypy
+        args: ["--config-file", "mypy.ini"]
+        pass_filenames: false
+        stages: [manual]
+
+  # Local framework-specific checks
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest -q
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: docs-cli-reference
+        name: docs CLI reference
+        entry: python -m dltaf.cli docs generate-cli-reference --check --show-diff
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: docs-dev-metrics
+        name: docs developer metrics
+        entry: python -m dltaf.cli docs update-dev-metrics --check --show-diff
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: contract-tests
+        name: contract tests
+        entry: python -m cli.contract_test --manifests-dir dlt_pipelines/manifests --output - --format json
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: dependency-rules
+        name: dependency rules
+        entry: python -m ci_scripts.dependency_rules --repo-root .
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: deprecation-preview
+        name: deprecation preview (strict)
+        entry: bash -lc 'DLTAF_LEGACY_CLI_POLICY=error DLTAF_LEGACY_IMPORT_POLICY=error python -m pytest -q tests/test_deprecation_policy.py tests/test_dltaf_cli_smoke.py'
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: deprecation-roadmap-check
+        name: deprecation roadmap check
+        entry: python -m ci_scripts.deprecation_roadmap_check --repo-root .
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: package-smoke
+        name: package build/install smoke
+        entry: bash -lc 'set -euo pipefail; python -m build; tmp_venv=$(mktemp -d /tmp/dltaf-smoke-venv.XXXXXX); trap "rm -rf $tmp_venv" EXIT; python -m venv "$tmp_venv"; . "$tmp_venv/bin/activate"; pip install --upgrade pip; pip install dist/*.whl; python -m ci_scripts.package_smoke'
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: build-dev-package
+        name: build dev package artifact
+        entry: python -m ci_scripts.dev_package build --repo-root . --dist-dir dist-dev --env-file dist-dev/dev_package.env --json-file dist-dev/dev_package.json --bundle-dir dist-dev/dev_bundle
+        language: system
+        pass_filenames: false
+        stages: [manual]
+
+      - id: smoke-installed-dev-package
+        name: smoke installed dev package
+        entry: bash -lc 'python -m ci_scripts.dev_package smoke-install --repo-root . --version "$DLTAF_DEV_PACKAGE_VERSION" --simple-index-url "$DLTAF_DEV_PACKAGE_SIMPLE_INDEX_URL"'
+        language: system
+        pass_filenames: false
+        stages: [manual]

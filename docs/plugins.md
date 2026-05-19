@@ -1,60 +1,114 @@
-# Plugins
+# Plugins and Private Integrations
 
-`dltaf` uses a unified source plugin registry.
+`dltaf` uses a unified extension model. The public core can be extended in three places:
 
-## Resolution order
+- runner plugins
+- hook plugins
+- infra-check plugins
 
-For every `source.kind`, `dltaf` resolves plugins in this order:
+That lets private integrations stay in a monorepo or private package without forking the public framework.
 
-1. built-in core plugins
-2. installed entry points in the `dltaf.plugins` group
-3. local modules or package paths from environment configuration
+## Resolution model
 
-## Local monorepo catalog
+Each registry starts with public built-ins and then loads any private modules requested by:
 
-If your private catalog stays inside a monorepo, point `dltaf` to it:
+- environment variables
+- manifest plugin lists
 
-```bash
-export DLTAF_PLUGIN_PATHS="/path/to/monorepo/internal/dltaf_plugins"
-dltaf plugins list
-```
+Environment variables:
 
-## Importable modules
+- `DLT_RUNNER_PLUGINS`
+- `DLT_HOOK_PLUGINS`
+- `DLT_INFRA_CHECK_PLUGINS`
 
-```bash
-export DLTAF_PLUGIN_MODULES="company_private_plugins,team_connectors"
-dltaf plugins list
-```
+Manifest keys:
 
-## Installed private packages
+- `run.runners.plugins`
+- `run.hooks.plugins`
+- `run.online_checks.plugins`
 
-Private packages can register plugins with Python entry points:
+Plugin specs are Python module import strings.
 
-```toml
-[project.entry-points."dltaf.plugins"]
-customer_integrations = "customer_integrations.plugins:get_plugins"
-```
+## Monorepo-friendly private catalog
 
-## Plugin contract
+If your private catalog still lives inside a monorepo, the easiest path is:
 
-Each plugin should register one or more `SourcePlugin` objects with:
-- `kind`
-- `validate(manifest)`
-- `build_runtime_env(manifest)` if extra runtime variables are needed
-- `run(manifest)`
+1. make the plugin package importable in that environment
+2. reference it by module path
 
-## Naming guidance
-
-Use namespaced identifiers for private kinds:
-
-```text
-internal.customer_export
-company.billing_events
-team.partner_sync
-```
-
-## Scaffold
+Example:
 
 ```bash
-dltaf scaffold plugin --kind internal.customer_export --output-dir ./internal/dltaf_plugins
+export PYTHONPATH="/path/to/monorepo:$PYTHONPATH"
+export DLT_RUNNER_PLUGINS="internal.dltaf_plugins.customer_export.runner_plugin"
 ```
+
+Then your manifest can stay stable:
+
+```yaml
+run:
+  runners:
+    plugins:
+      - internal.dltaf_plugins.customer_export.runner_plugin
+
+source:
+  kind: internal.customer_export
+```
+
+## Minimal runner plugin
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Mapping
+
+from dltaf.app.runtime import RunContext
+from dltaf.extensions.runners.registry import RunnerRegistry
+
+
+@dataclass
+class CustomerExportRunner:
+    kind: str = "internal.customer_export"
+
+    def validate(self, manifest: Mapping[str, Any]) -> None:
+        source = manifest.get("source") or {}
+        if str(source.get("kind") or "").strip() != self.kind:
+            raise ValueError("source.kind mismatch")
+
+    def run(self, manifest: Mapping[str, Any], ctx: RunContext) -> Any:
+        return {"status": "replace with real implementation"}
+
+
+def register_runners(registry: RunnerRegistry) -> None:
+    registry.register(CustomerExportRunner())
+```
+
+## Why the registry model matters
+
+This gives you a clean migration path:
+
+- start with a module inside a private monorepo
+- later move the same code into a private wheel
+- keep the same `source.kind`
+- keep the same manifest contract
+
+Only the delivery mechanism changes. The YAML does not.
+
+## Built-in vs private responsibility
+
+The public core should own:
+
+- generic execution services
+- reusable SQL and MongoDB integrations
+- manifest schema and migration helpers
+- generic secret resolution
+
+Private plugins should own:
+
+- business APIs
+- tenant-specific Kafka conventions
+- company-specific auth flows
+- customer payload contracts
+
+That split keeps the OSS package reusable while private teams keep their own delivery logic.

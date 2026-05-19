@@ -1,25 +1,42 @@
+# Compatibility filename kept for users coming from earlier docs.
+# Prefer `smoke_mongodb.yaml` for new references.
 version: 1
 
 pipeline:
-  name: dlt__mongodb_demo__to__clickhouse__raw
-  dataset: raw
+  name: dlt__mongodb_catalog__to__clickhouse__raw
   destination: clickhouse
+  dataset: raw
+  progress: log
+  dev_mode: false
 
 run:
   write_disposition: replace
 
-source:
-  kind: mongodb
-  name: mongodb_smoke
-  database: example_db
-  collection_names:
-    - events
-    - users
-
 connections:
   source:
     kind: mongodb
-    vault: ${ENV:DLTAF_SOURCE_VAULT_REF|secret/data/examples/mongodb}
+    vault: ${ENV:MONGODB__VAULT_REF|company:mongodb/example}
   destination:
     kind: clickhouse
-    vault: ${ENV:DLTAF_DESTINATION_VAULT_REF|secret/data/examples/clickhouse}
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+    overrides:
+      database: raw
+      dataset_table_separator: __
+
+source:
+  kind: mongodb
+  database: analytics
+  collection_names:
+    - users
+    - events
+  max_table_nesting: 2
+
+airflow:
+  dag_id: dlt__mongodb_catalog__to__clickhouse__raw
+  schedule: "0 5 * * *"
+  start_date: "2025-01-01"
+  catchup: false
+  max_active_runs: 1
+  tags:
+    - dlt
+    - compatibility
