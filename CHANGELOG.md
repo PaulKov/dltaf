@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.8
+
+Structured Vault references are now preserved across the connection resolver.
+
+Highlights:
+- `connections.*.vault` mappings such as `{ref: "mount:path", kv_version: "2"}` now reach `vault-kv-client` as structured refs instead of stringified Python dicts
+- package-mode Airflow runtimes no longer need consumer repo-local `dlt_utils` overrides for KV v2 refs
+- regression coverage pins the structured Vault ref contract at the connection-resolution boundary
+
 ## 0.2.6
 
 Package-first consumers now import runtime result contracts directly from the public `dltaf` namespace.

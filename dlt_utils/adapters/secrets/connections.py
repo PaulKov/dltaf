@@ -106,6 +106,17 @@ KAFKA_FIELDS: Mapping[str, str] = {
 }
 
 
+def _optional_non_empty_ref(value: Any) -> Optional[Any]:
+    """Return a Vault ref without coercing structured mappings to strings."""
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return value
+
+
 def _resolve_secret(
     *,
     block: Mapping[str, Any],
@@ -114,7 +125,7 @@ def _resolve_secret(
 ) -> Optional[Tuple[Dict[str, Any], str]]:
     """Resolve connection secret with precedence Vault -> Airflow Variables."""
 
-    vault_ref = str(block.get("vault") or "").strip() or None
+    vault_ref = _optional_non_empty_ref(block.get("vault"))
     overrides = block.get("overrides") or {}
     if overrides and not isinstance(overrides, Mapping):
         raise ValueError("connections.*.overrides must be a mapping")
