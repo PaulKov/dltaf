@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.9
+
+Kafka-backed API integrations can now depend on an official lightweight runtime extra.
+
+Highlights:
+- new public `dltaf[kafka]` extra installs `kafka-python`
+- `dltaf[all]` now includes the Kafka dependency used by PKB/B057-style runners
+- Airflow package-mode deployments can use `dltaf[runtime,kafka]` instead of ad-hoc plugin requirement variables
+
 ## 0.2.8
 
 Structured Vault references are now preserved across the connection resolver.

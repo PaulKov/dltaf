@@ -30,6 +30,7 @@ This intentionally avoids Oracle, PostgreSQL, MongoDB, Vault, and full SQL runti
 | PostgreSQL or generic SQLDB catalog ingestion into ClickHouse | `pip install "dltaf[clickhouse,sqldb,postgres]"` |
 | Oracle query-driven ingestion into ClickHouse | `pip install "dltaf[clickhouse,sqldb,oracle]"` |
 | MongoDB ingestion into ClickHouse | `pip install "dltaf[clickhouse,mongodb]"` |
+| API ingestion that waits for Kafka callbacks | `pip install "dltaf[runtime,kafka]"` |
 | Everything for framework development or broad compatibility smoke | `pip install "dltaf[all]"` |
 
 ## What each extra means
@@ -44,6 +45,8 @@ This intentionally avoids Oracle, PostgreSQL, MongoDB, Vault, and full SQL runti
   adds `oracledb`
 - `mongodb`
   adds `pymongo`
+- `kafka`
+  adds `kafka-python` for API runners that correlate asynchronous Kafka callbacks
 - `vault`
   adds `vault-kv-client`
 - `runtime`
