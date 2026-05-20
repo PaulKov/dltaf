@@ -18,6 +18,16 @@ dltaf manifest lint --manifests-dir ./manifests
 dltaf dags generate --manifests-dir ./manifests --output-dir ./generated_dags
 ```
 
+## Airflow package profile
+
+Install the generic Airflow bridge explicitly when the scheduler or a local
+rehearsal environment imports generated DAG wrappers directly from the `dltaf`
+wheel:
+
+```bash
+pip install "dltaf[airflow]"
+```
+
 ## What DAG generation expects
 
 The DAG generator reads manifest files and creates lightweight wrappers. Your actual pipeline behavior still comes from:
@@ -37,7 +47,7 @@ airflow:
   task:
     use_virtualenv: true
     requirements:
-      - dltaf[clickhouse,sqldb,postgres]==0.2.2
+      - dltaf[clickhouse,sqldb,postgres]==0.2.6
 ```
 
 Typical mappings:

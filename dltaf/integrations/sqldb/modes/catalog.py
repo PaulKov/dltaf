@@ -6,6 +6,7 @@ from dltaf.app.runtime import RunContext
 from dltaf.integrations.sqldb.config import ResolvedSqlDbConfig
 from dltaf.integrations.sqldb.dialects.base import SqlDialectAdapter
 from dltaf.integrations.sqldb.factories import build_catalog_source_factory
+from dltaf.integrations.sqldb.partial_success import resolve_partial_success_policy, run_catalog_with_partial_success
 from dlt_utils.runners.common import run_with_replace_protection
 
 
@@ -33,8 +34,16 @@ class CatalogMode:
             progress=pipeline_cfg.get('progress', 'log'),
             dev_mode=bool(pipeline_cfg.get('dev_mode', False)),
         )
-        source_factory = build_catalog_source_factory(config)
         write_disposition = str(run_cfg.get('write_disposition') or 'merge')
+        partial_success_policy = resolve_partial_success_policy(config.normalized_manifest)
+        if partial_success_policy is not None:
+            return run_catalog_with_partial_success(
+                config=config,
+                ctx=ctx,
+                pipeline=pipeline,
+                write_disposition=write_disposition,
+            )
+        source_factory = build_catalog_source_factory(config)
         return run_with_replace_protection(
             pipeline=pipeline,
             source_factory=source_factory,

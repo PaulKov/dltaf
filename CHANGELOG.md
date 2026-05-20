@@ -1,5 +1,90 @@
 # Changelog
 
+## 0.2.12
+
+API-style runners can now use framework-owned partitioned execution instead of
+hard-coding business dimensions such as BINs.
+
+Highlights:
+- new `execute_partitioned_units(...)` helper bounds concurrency by any unit
+  attribute, mapping key, or `unit.to_details()` field
+- new `resolve_unit_partition_value(...)` and `normalize_parallel_limit(...)`
+  helpers make private runner knobs reusable and testable
+- manifest docs describe `max_parallel_units`, `max_parallel_partitions`, and
+  `parallel_partition_key` as generic unit-level execution controls
+- strict manifest validation now accepts `airflow.enabled`, so disabled
+  generated DAG entrypoints remain package-compatible
+
+## 0.2.10
+
+Long-running API-style runners can now resume safely after Airflow retries.
+
+Highlights:
+- new unit checkpoint core persists successful unit payloads by `load_uuid`, `batch_key`, and `resume_key`
+- retry-safe design stores emitted rows, not just "done" flags, so resumed units still go through normal destination cleanup/load
+- `UnitRunStats` and `_pipeline_run_units` now expose checkpoint identity columns for queryable audit
+- manifest schema accepts `run.checkpoint` for framework-level checkpoint configuration
+
+## 0.2.9
+
+Kafka-backed API integrations can now depend on an official lightweight runtime extra.
+
+Highlights:
+- new public `dltaf[kafka]` extra installs `kafka-python`
+- `dltaf[all]` now includes the Kafka dependency used by PKB/B057-style runners
+- Airflow package-mode deployments can use `dltaf[runtime,kafka]` instead of ad-hoc plugin requirement variables
+
+## 0.2.8
+
+Structured Vault references are now preserved across the connection resolver.
+
+Highlights:
+- `connections.*.vault` mappings such as `{ref: "mount:path", kv_version: "2"}` now reach `vault-kv-client` as structured refs instead of stringified Python dicts
+- package-mode Airflow runtimes no longer need consumer repo-local `dlt_utils` overrides for KV v2 refs
+- regression coverage pins the structured Vault ref contract at the connection-resolution boundary
+
+## 0.2.6
+
+Package-first consumers now import runtime result contracts directly from the public `dltaf` namespace.
+
+Highlights:
+- public `dltaf` exports now include `RunResult`, `UnitRunStats`, `build_run_result`, and related runtime helpers
+- private consumer plugins no longer need legacy `dlt_utils.*` imports for framework-core result contracts
+- package-first environments are more robust when legacy compatibility paths are also present on `sys.path`
+
+## 0.2.5
+
+API-style runners now support framework-level unit observability and queryable unit audit history.
+
+Highlights:
+- new structured `UnitRunStats` and `RunResult.unit_stats` contract for per-unit execution telemetry
+- built-in runtime summary now renders unit-level tables and rollups alongside existing per-table SQL summaries
+- built-in audit hook now writes detailed unit rows into ClickHouse `<dataset>._pipeline_run_units`
+- new `dltaf runs units` CLI command for self-service inspection of per-unit audit history
+- `run.observability` added to manifest schema with `verbosity` and `dlt_progress` controls
+- `pkb_conclusion` private runner can now emit full per-BIN lifecycle, requestId/decision, timings, rows and aggregated PKB rollups
+
+## 0.2.4
+
+SQL catalog manifests now support framework-level partial-success execution and structured table-level runtime summaries.
+
+Highlights:
+- `run.partial_success` added for `sql_database` and `sqldb` catalog manifests
+- catalog mode can now tolerate per-table failures and still succeed when policy conditions are met
+- built-in runtime summary hook prints compact per-table and rollup statistics for all jobs
+- ClickHouse target stats now include best-effort before/after rows and storage deltas per table
+- Airflow task docs now surface partial-success mode without changing `task_id`
+
+## 0.2.3
+
+Airflow package-mode integration is now part of the public OSS release.
+
+Highlights:
+- `dag_builder` now includes the latest package-first `PythonVirtualenvOperator` bridge
+- slim install-profile helpers are shipped publicly in `dlt_utils.install_profiles`
+- generated DAG wrappers pass `manifests_dir` explicitly, so the installed wheel no longer depends on repo-local default paths
+- public package now exposes optional extra `dltaf[airflow]`
+
 ## 0.2.2
 
 Vault-backed manifest connections now support explicit KV version pinning.

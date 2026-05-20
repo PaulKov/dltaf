@@ -50,11 +50,122 @@ class LoadMetrics:
 
 
 @dataclass(frozen=True)
+class TableRunStats:
+    """Best-effort per-table execution metrics."""
+
+    source_table: str
+    target_table: str
+    started_at: datetime
+    finished_at: datetime
+    duration_seconds: float
+    status: str
+    error_kind: Optional[str] = None
+    error_message: Optional[str] = None
+    rows_processed: Optional[int] = None
+    rows_inserted: Optional[int] = None
+    rows_updated: Optional[int] = None
+    rows_deleted: Optional[int] = None
+    rows_before: Optional[int] = None
+    rows_after: Optional[int] = None
+    delta_rows: Optional[int] = None
+    delta_pct: Optional[float] = None
+    size_gb_before: Optional[float] = None
+    size_gb_after: Optional[float] = None
+    delta_gb: Optional[float] = None
+    rps: Optional[float] = None
+    gbps: Optional[float] = None
+
+    def to_dict(self, *, include_none: bool = False) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "source_table": self.source_table,
+            "target_table": self.target_table,
+            "started_at": self.started_at.isoformat() + "Z",
+            "finished_at": self.finished_at.isoformat() + "Z",
+            "duration_seconds": self.duration_seconds,
+            "status": self.status,
+            "error_kind": self.error_kind,
+            "error_message": self.error_message,
+            "rows_processed": self.rows_processed,
+            "rows_inserted": self.rows_inserted,
+            "rows_updated": self.rows_updated,
+            "rows_deleted": self.rows_deleted,
+            "rows_before": self.rows_before,
+            "rows_after": self.rows_after,
+            "delta_rows": self.delta_rows,
+            "delta_pct": self.delta_pct,
+            "size_gb_before": self.size_gb_before,
+            "size_gb_after": self.size_gb_after,
+            "delta_gb": self.delta_gb,
+            "rps": self.rps,
+            "gbps": self.gbps,
+        }
+        if include_none:
+            return d
+        return {k: v for k, v in d.items() if v is not None}
+
+
+@dataclass(frozen=True)
+class UnitRunStats:
+    """Best-effort per-unit execution metrics for API-style runners."""
+
+    unit_kind: str
+    unit_id: str
+    ordinal: int
+    started_at: datetime
+    finished_at: datetime
+    duration_seconds: float
+    status: str
+    stage: str
+    rows_emitted: Optional[int] = None
+    retry_count: Optional[int] = None
+    warnings_count: Optional[int] = None
+    external_id: Optional[str] = None
+    outcome_code: Optional[str] = None
+    error_kind: Optional[str] = None
+    error_message: Optional[str] = None
+    details: Optional[Mapping[str, Any]] = None
+    load_uuid: Optional[str] = None
+    batch_key: Optional[str] = None
+    resume_key: Optional[str] = None
+
+    def to_dict(self, *, include_none: bool = False) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "unit_kind": self.unit_kind,
+            "unit_id": self.unit_id,
+            "ordinal": self.ordinal,
+            "started_at": self.started_at.isoformat() + "Z",
+            "finished_at": self.finished_at.isoformat() + "Z",
+            "duration_seconds": self.duration_seconds,
+            "status": self.status,
+            "stage": self.stage,
+            "rows_emitted": self.rows_emitted,
+            "retry_count": self.retry_count,
+            "warnings_count": self.warnings_count,
+            "external_id": self.external_id,
+            "outcome_code": self.outcome_code,
+            "error_kind": self.error_kind,
+            "error_message": self.error_message,
+            "details": dict(self.details or {}) if self.details is not None else None,
+            "load_uuid": self.load_uuid,
+            "batch_key": self.batch_key,
+            "resume_key": self.resume_key,
+        }
+        if include_none:
+            return d
+        return {k: v for k, v in d.items() if v is not None}
+
+    def to_json(self, *, include_none: bool = False) -> str:
+        """Serialize the unit stats as stable JSON for audit/checkpoint storage."""
+
+        return json.dumps(self.to_dict(include_none=include_none), ensure_ascii=False)
+
+
+@dataclass(frozen=True)
 class RunResult:
     """Structured run result passed to hooks.
 
     Attributes:
-        status: one of: success | failed | planned | dry_run | dry_run_online
+        status: one of: success | partial_success | failed | planned | dry_run | dry_run_online
         payload: original result object returned by the runner (often dlt LoadInfo)
         plan: plan dict for plan/dry-run modes
         load_metrics: best-effort normalized metrics for successful loads
@@ -66,6 +177,10 @@ class RunResult:
     payload: Any = None
     plan: Optional[Mapping[str, Any]] = None
     load_metrics: Optional[LoadMetrics] = None
+    warnings: Sequence[str] = field(default_factory=tuple)
+    table_stats: Sequence[TableRunStats] = field(default_factory=tuple)
+    unit_stats: Sequence[UnitRunStats] = field(default_factory=tuple)
+    message: Optional[str] = None
 
     finished_at: datetime = field(default_factory=datetime.utcnow)
     duration_seconds: float = 0.0
@@ -79,9 +194,13 @@ class RunResult:
 
         obj = {
             "status": self.status,
+            "message": self.message,
             "duration_seconds": self.duration_seconds,
             "finished_at": self.finished_at.isoformat() + "Z",
             "load_metrics": self.load_metrics.to_dict() if self.load_metrics else None,
+            "warnings": list(self.warnings or ()),
+            "table_stats": [table.to_dict() for table in self.table_stats or ()],
+            "unit_stats": [unit.to_dict() for unit in self.unit_stats or ()],
             "plan": self.plan,
             "payload_type": type(self.payload).__name__ if self.payload is not None else None,
         }
@@ -224,6 +343,26 @@ def extract_load_metrics(payload: Any) -> Optional[LoadMetrics]:
     )
 
 
+def merge_load_metrics(metrics_items: Sequence[Optional[LoadMetrics]]) -> Optional[LoadMetrics]:
+    meaningful = [item for item in metrics_items if item is not None]
+    if not meaningful:
+        return None
+
+    packages_count = sum(int(item.packages_count or 0) for item in meaningful)
+    jobs_count = sum(int(item.jobs_count or 0) for item in meaningful)
+    failed_jobs_count = sum(int(item.failed_jobs_count or 0) for item in meaningful)
+    tables_count = sum(int(item.tables_count or 0) for item in meaningful)
+    rows_count = sum(int(item.rows_count or 0) for item in meaningful)
+
+    return LoadMetrics(
+        packages_count=packages_count or None,
+        jobs_count=jobs_count or None,
+        failed_jobs_count=failed_jobs_count or None,
+        tables_count=tables_count or None,
+        rows_count=rows_count or None,
+    )
+
+
 def build_run_result(
     *,
     ctx: Any,
@@ -231,6 +370,11 @@ def build_run_result(
     payload: Any,
     status: str,
     finished_at: Optional[datetime] = None,
+    warnings: Optional[Sequence[str]] = None,
+    table_stats: Optional[Sequence[TableRunStats]] = None,
+    unit_stats: Optional[Sequence[UnitRunStats]] = None,
+    message: Optional[str] = None,
+    load_metrics: Optional[LoadMetrics] = None,
 ) -> RunResult:
     """Build a structured RunResult envelope."""
 
@@ -243,12 +387,11 @@ def build_run_result(
         duration_s = 0.0
 
     plan: Optional[Mapping[str, Any]] = None
-    load_metrics: Optional[LoadMetrics] = None
 
     if status in {"planned", "dry_run", "dry_run_online"} and isinstance(payload, Mapping):
         plan = payload
 
-    if status == "success":
+    if load_metrics is None and status in {"success", "partial_success"}:
         load_metrics = extract_load_metrics(payload)
 
     return RunResult(
@@ -256,6 +399,10 @@ def build_run_result(
         payload=payload,
         plan=plan,
         load_metrics=load_metrics,
+        warnings=tuple(warnings or ()),
+        table_stats=tuple(table_stats or ()),
+        unit_stats=tuple(unit_stats or ()),
+        message=message,
         finished_at=fa,
         duration_seconds=float(duration_s),
     )

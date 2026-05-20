@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def try_get_vault_secret(
-    vault_ref: Optional[str], *, overrides: Optional[Mapping[str, Any]] = None
+    vault_ref: Optional[Any], *, overrides: Optional[Mapping[str, Any]] = None
 ) -> Optional[Tuple[Dict[str, Any], str]]:
     """Try to read secret from Vault.
 

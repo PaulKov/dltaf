@@ -5,7 +5,7 @@ from typing import Any, List, Mapping
 
 from dltaf.app.runtime import RunContext
 from dltaf.services.execution.redaction import safe_exception_message
-from dlt_utils.core.run_result import build_run_result
+from dlt_utils.core.run_result import RunResult, build_run_result
 
 from .protocol import Hook
 
@@ -26,18 +26,23 @@ class HookPipeline:
                 self._safe_call(hook, "on_error", manifest, ctx, exc)
             raise
         else:
-            if ctx.options.plan:
-                status = "planned"
-            elif getattr(ctx.options, "dry_run_online", False):
-                status = "dry_run_online"
-            elif ctx.options.dry_run:
-                status = "dry_run"
+            if isinstance(payload, RunResult):
+                rr = payload
             else:
-                status = "success"
-            rr = build_run_result(ctx=ctx, manifest=manifest, status=status, payload=payload)
+                if ctx.options.plan:
+                    status = "planned"
+                elif getattr(ctx.options, "dry_run_online", False):
+                    status = "dry_run_online"
+                elif ctx.options.dry_run:
+                    status = "dry_run"
+                else:
+                    status = "success"
+                rr = build_run_result(ctx=ctx, manifest=manifest, status=status, payload=payload)
             for hook in reversed(executed):
                 self._safe_call(hook, "post_run", manifest, ctx, rr)
-            return payload
+            if rr.status == "failed":
+                raise RuntimeError(rr.message or "Run failed")
+            return rr.payload if isinstance(payload, RunResult) else payload
 
     @staticmethod
     def _safe_call(hook: Hook, method: str, *args: Any) -> None:

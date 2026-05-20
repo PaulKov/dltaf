@@ -24,6 +24,7 @@ class RunContextBuilder:
     ) -> RunContext:
         pipeline_cfg = manifest.get("pipeline") or {}
         run_cfg = manifest.get("run") or {}
+        observability_cfg = (run_cfg.get("observability") or {}) if isinstance(run_cfg, Mapping) else {}
         manifest_path = Path(str(manifest.get("__manifest_path__") or request.manifest_path)).resolve()
         actual_run_id = str(run_id or uuid4())
         effective_write_disposition = str(run_cfg.get("write_disposition") or "replace")
@@ -46,6 +47,8 @@ class RunContextBuilder:
                 dry_run_online=bool(request.dry_run_online),
                 dry_run_strict=bool(request.dry_run_strict),
                 plan=bool(request.plan),
+                observability_verbosity=str(observability_cfg.get("verbosity") or "compact"),
+                dlt_progress=str(observability_cfg.get("dlt_progress") or "default"),
                 overrides=dict(request.overrides or {}),
             ),
             env=env.values,

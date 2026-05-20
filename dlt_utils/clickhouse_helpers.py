@@ -11,11 +11,15 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from dltaf.services.execution.redaction import safe_exception_message
 
 logger = logging.getLogger(__name__)
+
+
+def _query_literal(value: str) -> str:
+    return "'" + str(value).replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
 def get_clickhouse_client():
@@ -314,3 +318,60 @@ def fetch_first_column_values(query: str) -> List[str]:
     result = client.query(query)
     rows = result.result_rows or []
     return [str(r[0]) for r in rows if r and len(r) > 0]
+
+
+def get_table_storage_stats(
+    dataset_name: str,
+    table_name: str,
+    dataset_separator: Optional[str] = None,
+) -> Optional[Dict[str, int | str]]:
+    """Best-effort active row/byte stats for a target table in ClickHouse."""
+
+    client = get_clickhouse_client()
+    if client is None:
+        return None
+
+    separator = dataset_separator or os.getenv(
+        "DESTINATION__CLICKHOUSE__CREDENTIALS__DATASET_TABLE_SEPARATOR",
+        "__",
+    )
+    candidates = [str(table_name)]
+    if separator:
+        candidates.append(f"{dataset_name}{separator}{table_name}")
+
+    for candidate in candidates:
+        try:
+            query = (
+                "SELECT "
+                "toUInt64OrZero(sum(rows)) AS rows_count, "
+                "toUInt64OrZero(sum(bytes_on_disk)) AS bytes_count "
+                "FROM system.parts "
+                f"WHERE active AND database = {_query_literal(dataset_name)} "
+                f"AND table = {_query_literal(candidate)}"
+            )
+            result = client.query(query)
+            row = (result.result_rows or [(0, 0)])[0]
+            rows_count = int(row[0] or 0)
+            bytes_count = int(row[1] or 0)
+            if rows_count > 0 or bytes_count > 0:
+                return {
+                    "database": str(dataset_name),
+                    "table": str(candidate),
+                    "rows_count": rows_count,
+                    "bytes_count": bytes_count,
+                }
+        except Exception as exc:
+            logger.warning(
+                "Could not fetch ClickHouse storage stats for %s.%s: %s",
+                dataset_name,
+                candidate,
+                safe_exception_message(exc),
+            )
+            return None
+
+    return {
+        "database": str(dataset_name),
+        "table": str(table_name),
+        "rows_count": 0,
+        "bytes_count": 0,
+    }

@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, Mapping
+from dataclasses import dataclass
+from typing import Any, Callable, Literal, Mapping
 
 from dlt_utils.clickhouse_helpers import (
     check_tables_exist,
@@ -25,12 +26,22 @@ from dltaf.services.execution.redaction import safe_exception_message
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class ReplaceProtectedExecutionError(Exception):
+    stage: Literal["source", "load"]
+    cause: Exception
+
+    def __post_init__(self) -> None:
+        Exception.__init__(self, f"{self.stage} stage failed: {self.cause}")
+
+
 def run_with_replace_protection(
     *,
     pipeline: Any,
     source_factory: Callable[[], Any],
     manifest: Mapping[str, Any],
     write_disposition: str,
+    annotate_errors: bool = False,
 ) -> Any:
     """Generic wrapper for replace mode protection.
 
@@ -69,16 +80,28 @@ def run_with_replace_protection(
                 logger.info("Creating tables first with append mode...")
                 try:
                     # First run with append to create tables
-                    source_append = source_factory()
+                    try:
+                        source_append = source_factory()
+                    except Exception as e:
+                        if annotate_errors:
+                            raise ReplaceProtectedExecutionError(stage="source", cause=e) from e
+                        raise
                     pipeline.run(source_append, write_disposition="append")
                     logger.info("Tables created successfully, now proceeding with replace...")
                 except Exception as e:
                     logger.error("Failed to create tables with append: %s", safe_exception_message(e))
+                    if annotate_errors and not isinstance(e, ReplaceProtectedExecutionError):
+                        raise ReplaceProtectedExecutionError(stage="load", cause=e) from e
                     raise
 
     # Run the pipeline
     try:
-        source = source_factory()
+        try:
+            source = source_factory()
+        except Exception as e:
+            if annotate_errors:
+                raise ReplaceProtectedExecutionError(stage="source", cause=e) from e
+            raise
         load_info = pipeline.run(source, write_disposition=write_disposition)
         logger.info("dlt load finished: %s", load_info)
         return load_info
@@ -103,18 +126,32 @@ def run_with_replace_protection(
             # Retry: create tables with append, then replace
             logger.info("Step 1: Creating tables with append mode...")
             try:
-                source_retry = source_factory()
+                try:
+                    source_retry = source_factory()
+                except Exception as source_error:
+                    if annotate_errors:
+                        raise ReplaceProtectedExecutionError(stage="source", cause=source_error) from source_error
+                    raise
                 pipeline.run(source_retry, write_disposition="append")
                 logger.info("Tables created successfully")
 
                 logger.info("Step 2: Running with replace mode...")
-                source_retry2 = source_factory()
+                try:
+                    source_retry2 = source_factory()
+                except Exception as source_error:
+                    if annotate_errors:
+                        raise ReplaceProtectedExecutionError(stage="source", cause=source_error) from source_error
+                    raise
                 load_info = pipeline.run(source_retry2, write_disposition="replace")
                 logger.info("dlt load finished after recovery: %s", load_info)
                 return load_info
             except Exception as retry_error:
                 logger.error("Retry failed: %s", safe_exception_message(retry_error))
+                if annotate_errors and not isinstance(retry_error, ReplaceProtectedExecutionError):
+                    raise ReplaceProtectedExecutionError(stage="load", cause=retry_error) from retry_error
                 raise retry_error from e
 
         # Re-raise original exception if we couldn't handle it
+        if annotate_errors:
+            raise ReplaceProtectedExecutionError(stage="load", cause=e) from e
         raise

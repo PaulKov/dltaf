@@ -41,6 +41,9 @@ pip install dltaf
 Common runtime profiles:
 
 ```bash
+# Generic Airflow bridge + DAG builder helpers
+pip install "dltaf[airflow]"
+
 # ClickHouse destination + Vault-backed private plugin flows
 pip install "dltaf[runtime]"
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dltaf"
-version = "0.2.2"
+version = "0.2.12"
 description = "Manifest-driven data loading framework with canonical SQLDB manifests, Airflow helpers, and pluggable private integrations."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,7 @@ dependencies = [
   "dlt>=1.18.2,<2",
   "PyYAML>=6.0.1",
   "pydantic>=2.8,<3",
+  "prettytable>=3.12,<4",
 ]
 
 [project.urls]
@@ -37,6 +38,9 @@ Issues = "https://github.com/PaulKov/dltaf/issues"
 Changelog = "https://github.com/PaulKov/dltaf/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
+airflow = [
+  "apache-airflow>=2.10,<3",
+]
 clickhouse = [
   "dlt[clickhouse]>=1.18.2,<2",
 ]
@@ -54,6 +58,9 @@ oracle = [
 mongodb = [
   "pymongo>=4.6.0",
 ]
+kafka = [
+  "kafka-python>=2.3.0,<3",
+]
 vault = [
   "vault-kv-client>=0.1.0",
 ]
@@ -62,6 +69,7 @@ runtime = [
   "dlt[clickhouse]>=1.18.2,<2",
 ]
 all = [
+  "apache-airflow>=2.10,<3",
   "vault-kv-client>=0.1.0",
   "dlt[clickhouse]>=1.18.2,<2",
   "dlt[sql_database]>=1.18.2,<2",
@@ -69,6 +77,7 @@ all = [
   "psycopg2-binary>=2.9.9",
   "oracledb>=2.0.0",
   "pymongo>=4.6.0",
+  "kafka-python>=2.3.0,<3",
 ]
 dev = [
   "build>=1.2.2",

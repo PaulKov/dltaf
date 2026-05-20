@@ -26,6 +26,7 @@ from datetime import timedelta
 
 _dag_file_path = Path(__file__).resolve()
 _project_root = _dag_file_path.parent.parent
+_manifests_dir = _project_root / "dlt_manifests"
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
@@ -53,6 +54,7 @@ with DAG(
     build_dag_from_yaml(
         dag=dag,
         manifest_path="{manifest_filename}",
+        manifests_dir=_manifests_dir,
     )
 '''
 
@@ -75,6 +77,7 @@ from datetime import timedelta
 
 _dag_file_path = Path(__file__).resolve()
 _project_root = _dag_file_path.parent.parent
+_manifests_dir = _project_root / "dlt_manifests"
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
@@ -102,6 +105,7 @@ with DAG(
     build_dag_from_yaml(
         dag=dag,
         manifest_path="{manifest_filename}",
+        manifests_dir=_manifests_dir,
     )
 '''
 
