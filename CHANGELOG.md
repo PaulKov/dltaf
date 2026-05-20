@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.11
+
+API-style runners can now use framework-owned partitioned execution instead of
+hard-coding business dimensions such as BINs.
+
+Highlights:
+- new `execute_partitioned_units(...)` helper bounds concurrency by any unit
+  attribute, mapping key, or `unit.to_details()` field
+- new `resolve_unit_partition_value(...)` and `normalize_parallel_limit(...)`
+  helpers make private runner knobs reusable and testable
+- manifest docs describe `max_parallel_units`, `max_parallel_partitions`, and
+  `parallel_partition_key` as generic unit-level execution controls
+
 ## 0.2.10
 
 Long-running API-style runners can now resume safely after Airflow retries.

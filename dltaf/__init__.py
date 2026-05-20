@@ -28,6 +28,12 @@ from dltaf.airflow.runtime_params import (
     extract_param_defaults,
     load_runtime_overrides_from_manifest,
 )
+from dltaf.execution import (
+    PartitionedExecutionConfig,
+    execute_partitioned_units,
+    normalize_parallel_limit,
+    resolve_unit_partition_value,
+)
 from dltaf.periods import (
     PERIOD_SEQUENCE,
     PeriodPoint,
@@ -43,6 +49,7 @@ __all__ = [
     "LoadMetrics",
     "PERIOD_SEQUENCE",
     "PeriodPoint",
+    "PartitionedExecutionConfig",
     "RunResult",
     "TableRunStats",
     "UnitProgressLogger",
@@ -56,6 +63,7 @@ __all__ = [
     "build_unit_resume_key",
     "build_unit_rollup",
     "default_window_end",
+    "execute_partitioned_units",
     "expand_period_window",
     "extract_param_defaults",
     "extract_load_metrics",
@@ -63,8 +71,10 @@ __all__ = [
     "load_runtime_overrides_from_manifest",
     "load_checkpoint_records",
     "normalize_period_name",
+    "normalize_parallel_limit",
     "period_sort_key",
     "record_unit_checkpoint",
+    "resolve_unit_partition_value",
     "resolve_unit_checkpoint_config",
 ]
-__version__ = "0.2.10"
+__version__ = "0.2.11"

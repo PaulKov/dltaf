@@ -188,6 +188,43 @@ Safety rule: checkpoints persist emitted rows, not only unit status. A resumed
 unit contributes its stored rows to the same load path, so retries do not lose
 data when the previous attempt timed out before the destination write finished.
 
+## Unit-Level Partitioned Execution
+
+API-style private runners often process logical units: tenants, BINs, projects,
+files, periods, or composite keys. `dltaf` keeps that business vocabulary out of
+the core and exposes a generic partitioned executor instead.
+
+Runner-facing manifest knobs commonly look like this:
+
+```yaml
+source:
+  execution:
+    # Global worker ceiling for this task.
+    max_parallel_units: 8
+    # Maximum number of distinct partition values running at once.
+    max_parallel_partitions: 3
+    # Any key exposed by the runner unit object, mapping, or unit.to_details().
+    parallel_partition_key: requested_bin
+```
+
+The values that produce units remain runner-owned. They can come from inline
+YAML, files, environment variables, ClickHouse queries, API discovery, Airflow
+manual params, or any other source. The framework only sees finalized units and
+the configured `parallel_partition_key`.
+
+Examples:
+
+- `parallel_partition_key: requested_bin` limits concurrent BINs while allowing
+  a backfill to walk every project/period for each BIN.
+- `parallel_partition_key: requested_project_id` limits concurrent projects.
+- `parallel_partition_key: requested_period` limits concurrent reporting
+  periods.
+- `parallel_partition_key: unit_id` makes every unit its own partition.
+
+Runners should use `dltaf.execute_partitioned_units(...)` and expose a stable
+`to_details()` mapping on each unit. This keeps the scheduler generic, testable,
+and independent of private integration terminology.
+
 ### Query mode
 
 Use this for Oracle query files:
