@@ -102,6 +102,36 @@ def test_manifest_schema_accepts_vault_mapping_contract() -> None:
     assert validated.connections is not None
 
 
+def test_manifest_schema_accepts_disabled_airflow_entrypoint() -> None:
+    validated = validate_manifest_schema(
+        {
+            "version": 1,
+            "pipeline": {
+                "name": "dlt__sample__to__clickhouse__raw",
+                "destination": "clickhouse",
+                "dataset": "raw",
+            },
+            "source": {
+                "kind": "sqldb",
+                "dialect": "generic",
+                "mode": "catalog",
+                "catalog": {"schema": "public", "tables": ["orders"]},
+            },
+            "airflow": {
+                "enabled": False,
+                "dag_id": "dlt__sample__to__clickhouse__raw",
+                "schedule": "0 3 * * *",
+                "start_date": "2025-01-01",
+            },
+        },
+        strict=True,
+        strict_source=True,
+    )
+
+    assert validated.airflow is not None
+    assert validated.airflow.enabled is False
+
+
 def test_connection_resolution_preserves_structured_vault_ref(monkeypatch) -> None:
     captured_refs = []
 

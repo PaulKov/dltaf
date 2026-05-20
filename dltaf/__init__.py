@@ -77,4 +77,4 @@ __all__ = [
     "resolve_unit_partition_value",
     "resolve_unit_checkpoint_config",
 ]
-__version__ = "0.2.11"
+__version__ = "0.2.12"

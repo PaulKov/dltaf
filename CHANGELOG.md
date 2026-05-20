@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.11
+## 0.2.12
 
 API-style runners can now use framework-owned partitioned execution instead of
 hard-coding business dimensions such as BINs.
@@ -12,6 +12,8 @@ Highlights:
   helpers make private runner knobs reusable and testable
 - manifest docs describe `max_parallel_units`, `max_parallel_partitions`, and
   `parallel_partition_key` as generic unit-level execution controls
+- strict manifest validation now accepts `airflow.enabled`, so disabled
+  generated DAG entrypoints remain package-compatible
 
 ## 0.2.10
 

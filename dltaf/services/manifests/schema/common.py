@@ -375,6 +375,7 @@ class DependsOnRefStrict(DependsOnRef, ForbidExtraModel):
 
 
 class AirflowConfig(AllowExtraModel):
+    enabled: Optional[Union[bool, str]] = True
     dag_id: str
     schedule: str
     start_date: str
@@ -397,9 +398,9 @@ class AirflowConfig(AllowExtraModel):
             raise ValueError("value must be a non-empty string")
         return s
 
-    @field_validator("catchup")
+    @field_validator("enabled", "catchup")
     @classmethod
-    def catchup_boolish(cls, value: Any) -> Any:
+    def boolish_fields(cls, value: Any) -> Any:
         if value is None:
             return value
         return coerce_bool_or_env(value)
