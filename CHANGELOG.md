@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.10
+
+Long-running API-style runners can now resume safely after Airflow retries.
+
+Highlights:
+- new unit checkpoint core persists successful unit payloads by `load_uuid`, `batch_key`, and `resume_key`
+- retry-safe design stores emitted rows, not just "done" flags, so resumed units still go through normal destination cleanup/load
+- `UnitRunStats` and `_pipeline_run_units` now expose checkpoint identity columns for queryable audit
+- manifest schema accepts `run.checkpoint` for framework-level checkpoint configuration
+
 ## 0.2.9
 
 Kafka-backed API integrations can now depend on an official lightweight runtime extra.

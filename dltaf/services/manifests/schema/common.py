@@ -238,6 +238,26 @@ class ObservabilityConfigStrict(ObservabilityConfig, ForbidExtraModel):
     pass
 
 
+class CheckpointConfig(AllowExtraModel):
+    enabled: Optional[Union[bool, str]] = False
+    load_uuid: Optional[str] = None
+    batch_key: Optional[str] = None
+    table_name: Optional[str] = None
+    table: Optional[str] = None
+    resume_statuses: Optional[List[str]] = None
+
+    @field_validator("enabled")
+    @classmethod
+    def enabled_boolish(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        return coerce_bool_or_env(value)
+
+
+class CheckpointConfigStrict(CheckpointConfig, ForbidExtraModel):
+    pass
+
+
 class RunConfig(AllowExtraModel):
     write_disposition: Optional[str] = None
     replace_scope: Optional[str] = None
@@ -247,6 +267,7 @@ class RunConfig(AllowExtraModel):
     replace_policy: Optional[ReplacePolicyConfig] = None
     partial_success: Optional[PartialSuccessConfig] = None
     observability: Optional[ObservabilityConfig] = None
+    checkpoint: Optional[CheckpointConfig] = None
 
 
 class RunConfigStrict(RunConfig, ForbidExtraModel):
@@ -254,6 +275,7 @@ class RunConfigStrict(RunConfig, ForbidExtraModel):
     replace_policy: Optional[ReplacePolicyConfigStrict] = None
     partial_success: Optional[PartialSuccessConfigStrict] = None
     observability: Optional[ObservabilityConfigStrict] = None
+    checkpoint: Optional[CheckpointConfigStrict] = None
 
 
 class ConnectionSpec(AllowExtraModel):

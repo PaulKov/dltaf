@@ -158,6 +158,36 @@ Supported error toleration policies:
 - `source_only`
 - `any_per_table`
 
+## Unit Checkpoints
+
+Long-running API-style runners can opt into unit checkpoints. This is useful
+for Airflow retries: if a task times out after processing thousands of API
+units, the retry can restore already successful unit payloads and still run the
+normal destination cleanup/load path.
+
+```yaml
+run:
+  checkpoint:
+    enabled: true
+    # Optional. Defaults to DLTAF_LOAD_UUID, then AIRFLOW_CTX_DAG_RUN_ID,
+    # then the framework-generated run_id.
+    load_uuid: monthly-b057-2026-05
+    # Optional. Runners should provide a meaningful default for the selected
+    # backfill window or API batch.
+    batch_key: b057:2026:FULL_YEAR:2023:QUARTER_1:descending:all
+```
+
+Checkpoint identity:
+
+- `load_uuid` identifies the logical load attempt across retries.
+- `batch_key` scopes a logical window within that load.
+- `resume_key` is runner-defined per unit, for example `bin:961040001237` or
+  `project_period:BIN=...|projectId=...|year=...|period=...`.
+
+Safety rule: checkpoints persist emitted rows, not only unit status. A resumed
+unit contributes its stored rows to the same load path, so retries do not lose
+data when the previous attempt timed out before the destination write finished.
+
 ### Query mode
 
 Use this for Oracle query files:

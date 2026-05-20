@@ -124,6 +124,9 @@ class UnitRunStats:
     error_kind: Optional[str] = None
     error_message: Optional[str] = None
     details: Optional[Mapping[str, Any]] = None
+    load_uuid: Optional[str] = None
+    batch_key: Optional[str] = None
+    resume_key: Optional[str] = None
 
     def to_dict(self, *, include_none: bool = False) -> Dict[str, Any]:
         d: Dict[str, Any] = {
@@ -143,10 +146,18 @@ class UnitRunStats:
             "error_kind": self.error_kind,
             "error_message": self.error_message,
             "details": dict(self.details or {}) if self.details is not None else None,
+            "load_uuid": self.load_uuid,
+            "batch_key": self.batch_key,
+            "resume_key": self.resume_key,
         }
         if include_none:
             return d
         return {k: v for k, v in d.items() if v is not None}
+
+    def to_json(self, *, include_none: bool = False) -> str:
+        """Serialize the unit stats as stable JSON for audit/checkpoint storage."""
+
+        return json.dumps(self.to_dict(include_none=include_none), ensure_ascii=False)
 
 
 @dataclass(frozen=True)

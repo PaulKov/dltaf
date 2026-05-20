@@ -323,11 +323,22 @@ CREATE TABLE IF NOT EXISTS {_quote_ident(db)}.{_quote_ident(units_table)} (
   outcome_code Nullable(String),
   error_kind Nullable(String),
   error_message Nullable(String),
-  details_json Nullable(String)
+  details_json Nullable(String),
+  load_uuid Nullable(String),
+  batch_key Nullable(String),
+  resume_key Nullable(String)
 ) ENGINE = MergeTree
 ORDER BY (pipeline_name, started_at, run_id, unit_kind, ordinal)
 """.strip()
         client.command(units_ddl)
+
+        unit_alters = [
+            "ADD COLUMN IF NOT EXISTS load_uuid Nullable(String)",
+            "ADD COLUMN IF NOT EXISTS batch_key Nullable(String)",
+            "ADD COLUMN IF NOT EXISTS resume_key Nullable(String)",
+        ]
+        for a in unit_alters:
+            client.command(f"ALTER TABLE {_quote_ident(db)}.{_quote_ident(units_table)} {a}")
 
     def _write_unit_rows(
         self,
@@ -360,6 +371,9 @@ ORDER BY (pipeline_name, started_at, run_id, unit_kind, ordinal)
             "error_kind",
             "error_message",
             "details_json",
+            "load_uuid",
+            "batch_key",
+            "resume_key",
         ]
 
         for item in result.unit_stats:
@@ -397,4 +411,7 @@ ORDER BY (pipeline_name, started_at, run_id, unit_kind, ordinal)
             item.error_kind,
             item.error_message,
             details_json,
+            item.load_uuid,
+            item.batch_key,
+            item.resume_key,
         ]
