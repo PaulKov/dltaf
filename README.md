@@ -30,6 +30,27 @@ Private connectors such as internal APIs, Kafka-backed flows, or company-specifi
 - `Airflow-friendly`: the same manifest can be linted locally, planned in CI, and executed in DAG wrappers
 - `Self-service`: example manifests, template generation, and migration guidance ship with the package
 
+## Runtime primitives for private integrations
+
+Private API/Kafka integrations should keep business matching in private code and
+reuse framework-owned mechanics:
+
+- `execute_partitioned_units(...)` bounds unit execution by any configured unit field
+- `RetryPolicy` + `run_with_retry(...)` standardize capped exponential retries
+- `UnitRunStats` and unit checkpoints make long backfills observable and resumable
+
+Example timeout-only retry:
+
+```python
+from dltaf import RetryPolicy, run_with_retry, status_in
+
+outcome = run_with_retry(
+    lambda attempt: wait_for_kafka_message(),
+    policy=RetryPolicy(attempts=3, initial_delay_seconds=5, backoff_multiplier=2),
+    should_retry=status_in("timeout"),
+)
+```
+
 ## Installation
 
 Lean core install for linting, planning, docs, template generation, and non-runtime tooling:
