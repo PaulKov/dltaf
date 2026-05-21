@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.15
+
+Kafka-backed API runners can now share a framework-owned wait-loop primitive.
+
+Highlights:
+- new `KafkaWaitLoopConfig` and `wait_for_kafka_match(...)` own bounded polling, heartbeat logs, and timeout logs
+- private integrations can keep business-specific payload matching while reusing the same wait lifecycle
+- the helper is dependency-light and injectable, so tests do not need a real Kafka client
+
 ## 0.2.14
 
 API-style runners can now share a framework-owned retry/backoff primitive.

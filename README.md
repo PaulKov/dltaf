@@ -37,6 +37,7 @@ reuse framework-owned mechanics:
 
 - `execute_partitioned_units(...)` bounds unit execution by any configured unit field
 - `RetryPolicy` + `run_with_retry(...)` standardize capped exponential retries
+- `KafkaWaitLoopConfig` + `wait_for_kafka_match(...)` standardize bounded Kafka polling and heartbeat logs
 - `UnitRunStats` and unit checkpoints make long backfills observable and resumable
 
 Example timeout-only retry:
@@ -48,6 +49,25 @@ outcome = run_with_retry(
     lambda attempt: wait_for_kafka_message(),
     policy=RetryPolicy(attempts=3, initial_delay_seconds=5, backoff_multiplier=2),
     should_retry=status_in("timeout"),
+)
+```
+
+Example Kafka wait loop:
+
+```python
+from dltaf.services.kafka import KafkaWaitLoopConfig, wait_for_kafka_match
+
+result = wait_for_kafka_match(
+    poll_once=lambda timeout_ms: poll_and_decode_if_matches(timeout_ms),
+    config=KafkaWaitLoopConfig(
+        workflow_label="MY_API",
+        correlation_label="requestId",
+        timeout_seconds=240,
+        poll_interval_seconds=30,
+        progress_interval_seconds=60,
+    ),
+    unit_id="customer=42",
+    correlation_id="req-123",
 )
 ```
 
