@@ -82,4 +82,4 @@ __all__ = [
     "run_with_retry",
     "status_in",
 ]
-__version__ = "0.2.14"
+__version__ = "0.2.15"
