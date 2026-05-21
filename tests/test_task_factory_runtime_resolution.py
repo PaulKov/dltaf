@@ -142,7 +142,7 @@ def test_candidate_framework_roots_prefers_env_root_then_consumer_repo(monkeypat
 def test_virtualenv_callable_uses_dltaf_package_root_fallback(monkeypatch, tmp_path) -> None:
     task_factory = _load_task_factory(monkeypatch)
 
-    package_root = _strip_repo_root_from_sys_path(monkeypatch)
+    _strip_repo_root_from_sys_path(monkeypatch)
     _clear_dlt_utils_modules(monkeypatch)
 
     repo_root = tmp_path / "repo"
@@ -171,7 +171,7 @@ def test_virtualenv_callable_uses_dltaf_package_root_fallback(monkeypatch, tmp_p
 def test_virtualenv_callable_uses_repo_local_dp_dlt_af_fallback(monkeypatch, tmp_path) -> None:
     task_factory = _load_task_factory(monkeypatch)
 
-    package_root = _strip_repo_root_from_sys_path(monkeypatch)
+    _strip_repo_root_from_sys_path(monkeypatch)
     _clear_dlt_utils_modules(monkeypatch)
     monkeypatch.delenv("DLTAF_PACKAGE_ROOT", raising=False)
 

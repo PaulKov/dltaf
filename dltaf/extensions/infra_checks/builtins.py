@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, List, Mapping, Optional
 
-from dlt_utils.core.online_checks import clickhouse_online_check, kafka_online_check
-from dlt_utils.kafka_config import kafka_connection_from_manifest_or_env
+from dltaf.extensions.infra_checks.online import clickhouse_online_check, kafka_online_check
+from dltaf.services.kafka import kafka_connection_from_manifest_or_env
 
 
 @dataclass

@@ -8,13 +8,12 @@ from uuid import uuid4
 from dltaf.app.services import ApplicationServicesFactory
 from dltaf.extensions.hooks import HookPipeline, build_hooks
 from dltaf.services.execution.context_builder import RunContextBuilder
-from dltaf.services.execution.environment import ExecutionEnvironmentBuilder
+from dltaf.services.execution.environment import ExecutionEnvironmentBuilder, temporary_environ
 from dltaf.services.execution.planner import execute_plan_or_dry_run
 from dltaf.services.execution.request import ManifestExecutionRequest
 from dltaf.services.manifests.loader import load_manifest
 from dltaf.services.manifests.overrides import OverrideSpec, apply_overrides
 from dltaf.services.manifests.validator import get_runner_for_manifest, validate_manifest
-from dlt_utils.vault_env import temporary_environ
 
 logger = logging.getLogger(__name__)
 

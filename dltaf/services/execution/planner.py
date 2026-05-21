@@ -3,9 +3,9 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
-from dlt_utils.clickhouse_helpers import get_expected_table_names
+from dltaf.services.clickhouse import get_expected_table_names
 from dltaf.services.execution.redaction import RedactionOptions, redact_obj
-from dlt_utils.kafka_config import kafka_connection_from_manifest_or_env
+from dltaf.services.kafka import kafka_connection_from_manifest_or_env
 from dltaf.extensions.infra_checks import (
     build_infra_check_registry,
     evaluate_infra_checks,
