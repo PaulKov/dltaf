@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import contextlib
+import os
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Iterator, Mapping, Optional
 
 from dltaf.app.services import ApplicationServices
 
@@ -27,3 +29,21 @@ class ExecutionEnvironmentBuilder:
             env_values[str(key)] = str(value)
             env_sources[str(key)] = "extra_env"
         return ExecutionEnvironment(values=env_values, sources=env_sources)
+
+
+@contextlib.contextmanager
+def temporary_environ(env: Mapping[str, str]) -> Iterator[None]:
+    """Temporarily overlay ``os.environ`` for in-process manifest execution."""
+
+    previous: dict[str, Optional[str]] = {}
+    for key, value in dict(env or {}).items():
+        previous[str(key)] = os.environ.get(str(key))
+        os.environ[str(key)] = str(value)
+    try:
+        yield
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value

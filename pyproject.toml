@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dltaf"
-version = "0.2.12"
+version = "0.2.15"
 description = "Manifest-driven data loading framework with canonical SQLDB manifests, Airflow helpers, and pluggable private integrations."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -81,10 +81,12 @@ all = [
 ]
 dev = [
   "build>=1.2.2",
+  "dlt[sql_database]>=1.18.2,<2",
   "mkdocs>=1.6.1",
   "mkdocs-material>=9.6.14",
   "pytest>=8.3.5",
   "ruff>=0.11.5",
+  "sqlalchemy>=2.0.25",
   "twine>=6.1.0",
 ]
 docs = [

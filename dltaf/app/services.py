@@ -3,17 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-if False:  # pragma: no cover
-    from dlt_utils.adapters.http import RequestsHttpClient
-    from dlt_utils.adapters.kafka.kafka_python import KafkaPythonWaiter
-from dlt_utils.adapters.secrets import build_resolved_env_from_connections
-from dlt_utils.adapters.secrets.types import ResolvedEnv
+from dltaf.services.secrets import ResolvedEnv, build_resolved_env_from_connections
+from dltaf.services.secrets.vault import VaultGetter
 
 
 @dataclass(frozen=True)
 class SecretsProvider:
+    vault_getter: VaultGetter | None = None
+
     def resolve_connections(self, connections: Mapping[str, Any]) -> ResolvedEnv:
-        return build_resolved_env_from_connections(connections)
+        return build_resolved_env_from_connections(connections, vault_getter=self.vault_getter)
 
 
 @dataclass(frozen=True)
@@ -34,8 +33,8 @@ class HttpClientFactory:
         retries: Optional[int] = None,
         backoff_seconds: Optional[float] = None,
         logger: Any = None,
-    ) -> "RequestsHttpClient":
-        from dlt_utils.adapters.http import RequestsHttpClient
+    ) -> Any:
+        from dltaf.adapters.http import RequestsHttpClient
 
         merged_headers: Dict[str, str] = dict(self.default_headers)
         if default_headers:
@@ -63,9 +62,9 @@ class KafkaWaiterFactory:
         bootstrap_servers: Sequence[str],
         consumer_kwargs: Optional[Dict[str, Any]] = None,
         logger: Any = None,
-    ) -> "KafkaPythonWaiter":
+    ) -> Any:
         try:
-            from dlt_utils.adapters.kafka.kafka_python import KafkaPythonWaiter
+            from dltaf.adapters.kafka import KafkaPythonWaiter
         except ModuleNotFoundError as e:  # pragma: no cover
             raise RuntimeError(
                 "Kafka support requires dependency 'kafka-python'. Install project dependencies or add kafka-python to your environment."

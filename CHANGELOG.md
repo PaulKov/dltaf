@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.15
+
+Kafka-backed API runners can now share a framework-owned wait-loop primitive.
+
+Highlights:
+- new `KafkaWaitLoopConfig` and `wait_for_kafka_match(...)` own bounded polling, heartbeat logs, and timeout logs
+- private integrations can keep business-specific payload matching while reusing the same wait lifecycle
+- the helper is dependency-light and injectable, so tests do not need a real Kafka client
+
+## 0.2.14
+
+API-style runners can now share a framework-owned retry/backoff primitive.
+
+Highlights:
+- new public `RetryPolicy` describes total attempts, initial delay, multiplier, and max delay
+- new `run_with_retry(...)` executes retryable operations with injectable sleep and retry callbacks
+- new `status_in(...)` helper keeps timeout-only retry decisions concise for Kafka/API runners
+- public `dltaf` namespace exports the retry contracts for private plugin reuse
+- `dev` extra now includes SQLDB test dependencies so OSS CI mirrors the full test suite
+
 ## 0.2.12
 
 API-style runners can now use framework-owned partitioned execution instead of

@@ -43,6 +43,7 @@ from dltaf.periods import (
     normalize_period_name,
     period_sort_key,
 )
+from dltaf.retry import RetryOutcome, RetryPolicy, run_with_retry, status_in
 
 __all__ = [
     "__version__",
@@ -51,6 +52,8 @@ __all__ = [
     "PeriodPoint",
     "PartitionedExecutionConfig",
     "RunResult",
+    "RetryOutcome",
+    "RetryPolicy",
     "TableRunStats",
     "UnitProgressLogger",
     "UnitRollup",
@@ -76,5 +79,7 @@ __all__ = [
     "record_unit_checkpoint",
     "resolve_unit_partition_value",
     "resolve_unit_checkpoint_config",
+    "run_with_retry",
+    "status_in",
 ]
-__version__ = "0.2.12"
+__version__ = "0.2.15"
