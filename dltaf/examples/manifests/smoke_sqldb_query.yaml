@@ -1,0 +1,51 @@
+version: 1
+
+pipeline:
+  name: dlt__sqldb_query__to__clickhouse__raw
+  destination: clickhouse
+  dataset: raw
+  progress: log
+  dev_mode: false
+
+run:
+  write_disposition: replace
+
+connections:
+  source:
+    kind: oracle
+    vault: ${ENV:ORACLE__VAULT_REF|company:oracle/example}
+    overrides:
+      drivername: oracle+oracledb
+  destination:
+    kind: clickhouse
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+    overrides:
+      database: raw
+      dataset_table_separator: __
+
+source:
+  kind: sqldb
+  dialect: oracle
+  mode: query
+  query:
+    fetch_batch_size: 2000
+    queries:
+      - name: smoke_query
+        table_name: smoke_query
+        sql_file: ../sql/oracle_smoke_query.sql
+        write_disposition: replace
+        params:
+          dt_from: "2025-01-01"
+  dialect_options:
+    init_sql: ""
+
+airflow:
+  dag_id: dlt__sqldb_query__to__clickhouse__raw
+  schedule: "0 4 * * *"
+  start_date: "2025-01-01"
+  catchup: false
+  max_active_runs: 1
+  tags:
+    - dlt
+    - sqldb
+    - query

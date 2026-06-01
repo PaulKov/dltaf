@@ -1,26 +1,45 @@
+# Compatibility example.
+# This legacy alias still works, but new manifests should prefer canonical
+# `source.kind: sqldb` with `dialect: generic` and `mode: catalog`.
 version: 1
 
 pipeline:
-  name: dlt__sql_catalog_demo__to__clickhouse__raw
-  dataset: raw
+  name: dlt__sql_database_catalog__to__clickhouse__raw
   destination: clickhouse
+  dataset: raw
+  progress: log
+  dev_mode: false
 
 run:
   write_disposition: append
 
-source:
-  kind: sql_database
-  name: sql_catalog_demo
-  schema: public
-  tables:
-    - example_table
-
 connections:
   source:
-    kind: sql
-    vault: ${ENV:DLTAF_SOURCE_VAULT_REF|secret/data/examples/postgres}
+    kind: postgres
+    vault: ${ENV:POSTGRES__VAULT_REF|company:postgres/example}
     overrides:
       drivername: postgresql+psycopg2
+      database: analytics
   destination:
     kind: clickhouse
-    vault: ${ENV:DLTAF_DESTINATION_VAULT_REF|secret/data/examples/clickhouse}
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+    overrides:
+      database: raw
+      dataset_table_separator: __
+
+source:
+  kind: sql_database
+  schema: public
+  tables:
+    - orders
+    - customers
+
+airflow:
+  dag_id: dlt__sql_database_catalog__to__clickhouse__raw
+  schedule: "0 3 * * *"
+  start_date: "2025-01-01"
+  catchup: false
+  max_active_runs: 1
+  tags:
+    - dlt
+    - compatibility

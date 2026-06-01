@@ -1,28 +1,49 @@
+# Compatibility example.
+# This legacy alias still works, but new manifests should prefer canonical
+# `source.kind: sqldb` with `dialect: oracle` and `mode: query`.
 version: 1
 
 pipeline:
-  name: dlt__oracle_demo__to__clickhouse__raw
-  dataset: raw
+  name: dlt__oracle_custom_sql__to__clickhouse__raw
   destination: clickhouse
+  dataset: raw
+  progress: log
+  dev_mode: false
 
 run:
-  write_disposition: merge
-
-source:
-  kind: oracle_custom_sql
-  name: oracle_smoke
-  queries:
-    - name: smoke_rows
-      table_name: smoke_rows
-      sql_file: ../sql/oracle_smoke_query.sql
-      write_disposition: merge
-      primary_key:
-        - smoke_col
+  write_disposition: replace
 
 connections:
   source:
     kind: oracle
-    vault: ${ENV:DLTAF_SOURCE_VAULT_REF|secret/data/examples/oracle}
+    vault: ${ENV:ORACLE__VAULT_REF|company:oracle/example}
+    overrides:
+      drivername: oracle+oracledb
   destination:
     kind: clickhouse
-    vault: ${ENV:DLTAF_DESTINATION_VAULT_REF|secret/data/examples/clickhouse}
+    vault: ${ENV:CLICKHOUSE__VAULT_REF|company:clickhouse/example}
+    overrides:
+      database: raw
+      dataset_table_separator: __
+
+source:
+  kind: oracle_custom_sql
+  queries:
+    - name: smoke_query
+      table_name: smoke_query
+      sql_file: ../sql/oracle_smoke_query.sql
+      write_disposition: replace
+      params:
+        dt_from: "2025-01-01"
+  fetch_batch_size: 2000
+  init_sql: ""
+
+airflow:
+  dag_id: dlt__oracle_custom_sql__to__clickhouse__raw
+  schedule: "0 4 * * *"
+  start_date: "2025-01-01"
+  catchup: false
+  max_active_runs: 1
+  tags:
+    - dlt
+    - compatibility

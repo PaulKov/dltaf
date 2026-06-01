@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -33,5 +33,6 @@ jobs:
           . .smoke-venv/bin/activate
           pip install --upgrade pip
           pip install dist/*.whl
-          python -c "from dlt_utils.manifest_runner import get_source_registry; assert get_source_registry().resolve('sql_database').kind == 'sql_database'"
-          dltaf plugins list
+          python -c "from dltaf.extensions.runners.registry import get_default_registry; assert 'sqldb' in get_default_registry().names()"
+          dltaf manifest lint --manifest dltaf/examples/manifests/smoke_sqldb_catalog.yaml --allow-filename-mismatch
+          python -m dltaf.cli --help

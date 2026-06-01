@@ -1,27 +1,97 @@
-from __future__ import annotations
+"""Public package surface for `dltaf`.
 
-from dltaf.plugins import (
-    PluginRegistry,
-    RegisteredSourcePlugin,
-    SourcePlugin,
-    SourcePluginError,
-    SourcePluginNotFoundError,
-    SourcePluginValidationError,
-    build_source_registry,
-    env_plugin_modules,
-    env_plugin_paths,
-    scaffold_plugin_source,
+`dltaf` is the canonical framework namespace. Existing legacy modules
+(`dlt_utils`, `cli`, `dag_builder`, ...) remain available as compatibility
+facades, but new consumer code should import framework contracts from here.
+"""
+
+from dlt_utils.core.run_result import (
+    LoadMetrics,
+    RunResult,
+    TableRunStats,
+    UnitRunStats,
+    build_run_result,
+    extract_load_metrics,
 )
+from dlt_utils.core.unit_observability import (
+    UnitProgressLogger,
+    UnitRollup,
+    build_unit_rollup,
+    is_unit_business_outcome,
+    is_unit_success,
+    is_unit_technical_failure,
+    normalize_unit_status,
+)
+from dlt_utils.core.unit_checkpoints import (
+    UnitCheckpointConfig,
+    UnitCheckpointRecord,
+    build_resumed_unit_stat,
+    build_unit_resume_key,
+    load_checkpoint_records,
+    record_unit_checkpoint,
+    resolve_unit_checkpoint_config,
+)
+from dltaf.airflow.runtime_params import (
+    build_runtime_overrides,
+    extract_param_defaults,
+    load_runtime_overrides_from_manifest,
+)
+from dltaf.execution import (
+    PartitionedExecutionConfig,
+    execute_partitioned_units,
+    normalize_parallel_limit,
+    resolve_unit_partition_value,
+)
+from dltaf.periods import (
+    PERIOD_SEQUENCE,
+    PeriodPoint,
+    default_window_end,
+    expand_period_window,
+    format_period_window,
+    normalize_period_name,
+    period_sort_key,
+)
+from dltaf.retry import RetryOutcome, RetryPolicy, run_with_retry, status_in
 
 __all__ = [
-    "PluginRegistry",
-    "RegisteredSourcePlugin",
-    "SourcePlugin",
-    "SourcePluginError",
-    "SourcePluginNotFoundError",
-    "SourcePluginValidationError",
-    "build_source_registry",
-    "env_plugin_modules",
-    "env_plugin_paths",
-    "scaffold_plugin_source",
+    "__version__",
+    "LoadMetrics",
+    "PERIOD_SEQUENCE",
+    "PeriodPoint",
+    "PartitionedExecutionConfig",
+    "RunResult",
+    "RetryOutcome",
+    "RetryPolicy",
+    "TableRunStats",
+    "UnitProgressLogger",
+    "UnitRollup",
+    "UnitRunStats",
+    "UnitCheckpointConfig",
+    "UnitCheckpointRecord",
+    "build_runtime_overrides",
+    "build_resumed_unit_stat",
+    "build_run_result",
+    "build_unit_resume_key",
+    "build_unit_rollup",
+    "default_window_end",
+    "execute_partitioned_units",
+    "expand_period_window",
+    "extract_param_defaults",
+    "extract_load_metrics",
+    "format_period_window",
+    "is_unit_business_outcome",
+    "is_unit_success",
+    "is_unit_technical_failure",
+    "load_runtime_overrides_from_manifest",
+    "load_checkpoint_records",
+    "normalize_unit_status",
+    "normalize_period_name",
+    "normalize_parallel_limit",
+    "period_sort_key",
+    "record_unit_checkpoint",
+    "resolve_unit_partition_value",
+    "resolve_unit_checkpoint_config",
+    "run_with_retry",
+    "status_in",
 ]
+__version__ = "0.2.16"
