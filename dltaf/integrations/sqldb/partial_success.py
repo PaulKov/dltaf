@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping, Optional, Sequence
 
 from dlt_utils.clickhouse_helpers import get_table_storage_stats
@@ -156,7 +156,7 @@ def _now_like_ctx(ctx: RunContext) -> datetime:
     tzinfo = getattr(started_at, "tzinfo", None)
     if tzinfo is not None:
         return datetime.now(tz=tzinfo)
-    return datetime.utcnow().replace(tzinfo=None)
+    return datetime.now(tz=timezone.utc).replace(tzinfo=None)
 
 
 def _collect_clickhouse_stats(dataset: str, target_table: str) -> Optional[dict[str, Any]]:

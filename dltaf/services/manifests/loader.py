@@ -5,6 +5,7 @@ from typing import Any, Dict, Mapping, Optional
 
 import yaml
 
+from .extensions import strip_manifest_metadata_extensions
 from .resolver import ManifestResolver, resolve_manifest
 
 
@@ -22,7 +23,7 @@ class ManifestLoader:
         raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
         if not isinstance(raw, Mapping):
             raise ValueError(f"Manifest must be a YAML mapping, got: {type(raw)}")
-        data = self.resolver.resolve(dict(raw))
+        data = self.resolver.resolve(strip_manifest_metadata_extensions(raw))
         data["__manifest_path__"] = str(manifest_path)
         return dict(data)
 

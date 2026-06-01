@@ -9,6 +9,7 @@ Keep package import side effects minimal. Import concrete modules directly.
 
 __all__ = [
     "doctor",
+    "extensions",
     "lint",
     "loader",
     "overrides",

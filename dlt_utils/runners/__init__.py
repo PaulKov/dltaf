@@ -11,7 +11,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
-from dlt_utils.runners.base import SourceRunner
+from dltaf.extensions.runners.protocol import SourceRunner
 
 __all__ = [
     "SourceRunner",

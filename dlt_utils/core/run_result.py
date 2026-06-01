@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Set
 
 
@@ -182,7 +182,7 @@ class RunResult:
     unit_stats: Sequence[UnitRunStats] = field(default_factory=tuple)
     message: Optional[str] = None
 
-    finished_at: datetime = field(default_factory=datetime.utcnow)
+    finished_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     duration_seconds: float = 0.0
 
     def safe_json(self, *, indent: Optional[int] = None) -> str:
@@ -378,7 +378,7 @@ def build_run_result(
 ) -> RunResult:
     """Build a structured RunResult envelope."""
 
-    fa = finished_at or datetime.utcnow()
+    fa = finished_at or datetime.now(timezone.utc)
 
     duration_s = 0.0
     try:

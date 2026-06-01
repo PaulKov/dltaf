@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Optional, TYPE_CHECKING
 
@@ -49,7 +49,7 @@ class RunContext:
         elif self.started_at.tzinfo is not None:
             n = datetime.now(self.started_at.tzinfo)
         else:
-            n = datetime.utcnow()
+            n = datetime.now(timezone.utc)
         if self.started_at.tzinfo is not None and n.tzinfo is None:
             n = n.replace(tzinfo=self.started_at.tzinfo)
         elif self.started_at.tzinfo is None and n.tzinfo is not None:

@@ -9,6 +9,8 @@ from dltaf import UnitProgressLogger as PublicUnitProgressLogger
 from dltaf import UnitRunStats as PublicUnitRunStats
 from dltaf import build_unit_rollup as public_build_unit_rollup
 from dltaf import build_run_result as public_build_run_result
+from dltaf import is_unit_business_outcome as public_is_unit_business_outcome
+from dlt_utils.core.unit_observability import is_unit_business_outcome, is_unit_technical_failure
 from dlt_utils.core.run_result import RunResult, UnitRunStats
 from dlt_utils.hooks.audit_run import AuditRunHook
 from dlt_utils.hooks.runtime_summary import RuntimeSummaryHook
@@ -60,6 +62,41 @@ def test_public_dltaf_namespace_exports_runtime_result_contracts() -> None:
     assert isinstance(logger, PublicUnitProgressLogger)
     assert public_build_unit_rollup((_unit(),)).succeeded_units == 1
     assert callable(public_build_run_result)
+    assert public_is_unit_business_outcome(_unit("business_declined"))
+
+
+def test_unit_rollup_separates_business_and_technical_outcomes() -> None:
+    rollup = public_build_unit_rollup(
+        (
+            _unit("success", ordinal=1),
+            _unit("business_declined", ordinal=2),
+            _unit("technical_failed", ordinal=3),
+        )
+    )
+
+    assert rollup.succeeded_units == 1
+    assert rollup.business_units == 1
+    assert rollup.technical_failed_units == 1
+    assert rollup.failed_units == 1
+    assert is_unit_business_outcome(_unit("business_declined"))
+    assert is_unit_technical_failure(_unit("technical_failed"))
+
+
+def test_unit_progress_logs_business_outcome_without_warning(caplog) -> None:
+    logger = PublicUnitProgressLogger(
+        logging.getLogger("unit-business-outcome-test"),
+        unit_kind="bin",
+        total_units=1,
+        verbosity="verbose",
+    )
+
+    with caplog.at_level(logging.INFO):
+        logger.record(_unit("business_declined"))
+        logger.finish((_unit("business_declined"),))
+
+    assert "status=business_declined" in caplog.text
+    assert "business=1" in caplog.text
+    assert not [record for record in caplog.records if record.levelno >= logging.WARNING]
 
 
 def test_runtime_summary_logs_unit_summary(caplog) -> None:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
 from dlt_utils.clickhouse_helpers import get_clickhouse_client
@@ -101,7 +101,7 @@ class AuditRunHook:
             plan_obj: Optional[Mapping[str, Any]] = None
             metrics_obj: Optional[LoadMetrics] = None
 
-            finished_at = datetime.utcnow()
+            finished_at = datetime.now(timezone.utc)
             duration_s = ctx.elapsed_seconds(finished_at)
 
             if isinstance(result, RunResult):

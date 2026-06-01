@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
@@ -32,7 +32,7 @@ class RunContextBuilder:
             effective_write_disposition = str(request.write_disposition)
         return RunContext(
             run_id=actual_run_id,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
             manifest_path=manifest_path,
             pipeline_name=str(pipeline_cfg.get("name") or ""),
             source_kind=str((manifest.get("source") or {}).get("kind") or "").strip(),

@@ -188,6 +188,37 @@ Safety rule: checkpoints persist emitted rows, not only unit status. A resumed
 unit contributes its stored rows to the same load path, so retries do not lose
 data when the previous attempt timed out before the destination write finished.
 
+## Manifest Metadata Extensions
+
+Consumer repositories sometimes keep catalog, lineage, or ownership metadata in
+the same YAML file as the executable manifest. `dltaf>=0.2.16` treats known
+top-level metadata extensions as non-runtime data:
+
+```yaml
+version: 1
+pipeline:
+  name: dlt__sample__to__clickhouse__raw
+  destination: clickhouse
+  dataset: raw
+source:
+  kind: oracle_custom_sql
+  queries:
+    - name: sample
+      sql_file: ../sql/sample.sql
+catalog:
+  owner: data-platform
+  description: Used by the consumer catalog, ignored by runtime validation.
+```
+
+Runtime behavior:
+
+- `catalog` is ignored by strict manifest loader and schema validation.
+- `dltaf.services.manifests.extensions.build_runtime_manifest_payload(...)`
+  strips metadata extensions and resolves `sql_file` references against the
+  original manifest path. This is useful when Airflow writes a temporary runtime
+  manifest outside the repository.
+- The original YAML remains the source of truth for consumer catalog tooling.
+
 ## Unit-Level Partitioned Execution
 
 API-style private runners often process logical units: tenants, BINs, projects,
@@ -224,6 +255,21 @@ Examples:
 Runners should use `dltaf.execute_partitioned_units(...)` and expose a stable
 `to_details()` mapping on each unit. This keeps the scheduler generic, testable,
 and independent of private integration terminology.
+
+## Unit Outcome Statuses
+
+`UnitRunStats.status` separates technical failures from expected business
+outcomes:
+
+- `success`: the unit completed successfully.
+- `business_declined`, `business_skipped`, `period_unavailable`: expected
+  no-data or declined business outcomes.
+- `technical_failed` or legacy `failed`: retryable/incident-worthy failures.
+
+`build_unit_rollup(...)` reports technical failures in `failed_units` for
+backward compatibility and exposes separate `business_units` and
+`technical_failed_units` counters for new consumers. `UnitProgressLogger` logs
+business outcomes at info level and technical failures at warning level.
 
 ### Query mode
 

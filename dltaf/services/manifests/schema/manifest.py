@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Mapping, Union
 
 from pydantic import ValidationError
 
+from dltaf.services.manifests.extensions import strip_manifest_metadata_extensions
+
 from .base import AllowExtraModel, ForbidExtraModel
 from .common import (
     AirflowConfig,
@@ -55,7 +57,12 @@ class ManifestV1LintStrict(ForbidExtraModel):
 
 
 def strip_internal_keys(manifest: Mapping[str, Any]) -> Dict[str, Any]:
-    return {str(key): value for key, value in manifest.items() if not str(key).startswith("__")}
+    runtime_manifest = strip_manifest_metadata_extensions(manifest)
+    return {
+        str(key): value
+        for key, value in runtime_manifest.items()
+        if not str(key).startswith("__")
+    }
 
 
 def validate_manifest_schema(

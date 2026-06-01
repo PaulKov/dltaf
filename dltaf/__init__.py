@@ -13,7 +13,15 @@ from dlt_utils.core.run_result import (
     build_run_result,
     extract_load_metrics,
 )
-from dlt_utils.core.unit_observability import UnitProgressLogger, UnitRollup, build_unit_rollup
+from dlt_utils.core.unit_observability import (
+    UnitProgressLogger,
+    UnitRollup,
+    build_unit_rollup,
+    is_unit_business_outcome,
+    is_unit_success,
+    is_unit_technical_failure,
+    normalize_unit_status,
+)
 from dlt_utils.core.unit_checkpoints import (
     UnitCheckpointConfig,
     UnitCheckpointRecord,
@@ -71,8 +79,12 @@ __all__ = [
     "extract_param_defaults",
     "extract_load_metrics",
     "format_period_window",
+    "is_unit_business_outcome",
+    "is_unit_success",
+    "is_unit_technical_failure",
     "load_runtime_overrides_from_manifest",
     "load_checkpoint_records",
+    "normalize_unit_status",
     "normalize_period_name",
     "normalize_parallel_limit",
     "period_sort_key",
@@ -82,4 +94,4 @@ __all__ = [
     "run_with_retry",
     "status_in",
 ]
-__version__ = "0.2.15"
+__version__ = "0.2.16"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from dltaf.app.runtime import RunContext
@@ -40,7 +40,7 @@ class BasicLoggingHook:
             elapsed = float(result.duration_seconds)
         else:
             status = "success"
-            elapsed = ctx.elapsed_seconds(datetime.utcnow())
+            elapsed = ctx.elapsed_seconds(datetime.now(timezone.utc))
 
         ctx.logger.info(
             "Run finished: pipeline=%s run_id=%s status=%s duration_s=%.3f",
@@ -52,7 +52,7 @@ class BasicLoggingHook:
         ctx.logger.debug("Run result type: %s", type(result))
 
     def on_error(self, manifest: Mapping[str, Any], ctx: RunContext, exc: Exception) -> None:
-        elapsed = ctx.elapsed_seconds(datetime.utcnow())
+        elapsed = ctx.elapsed_seconds(datetime.now(timezone.utc))
         safe_err = safe_exception_message(exc)
         ctx.logger.error(
             "Run failed: pipeline=%s run_id=%s duration_s=%.3f error=%s",
